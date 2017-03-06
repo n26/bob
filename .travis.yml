@@ -1,0 +1,9 @@
+os: 
+    - linux
+    - osx
+language: generic
+sudo: required
+dist: trusty
+osx_image: xcode8.1
+script:
+    - "./ci.sh"
