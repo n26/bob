@@ -27,9 +27,9 @@ then
     echo "🐦 Installing Swift";
     if [[ $OS == "ubuntu1510" ]];
     then
-        SWIFTFILE="swift-$VERSION-RELEASE-ubuntu15.10";    
+        SWIFTFILE="swift-${VERSION}-RELEASE-ubuntu15.10";
     else
-        SWIFTFILE="swift-$VERSION-RELEASE-ubuntu14.04";
+        SWIFTFILE="swift-${VERSION}-RELEASE-ubuntu14.04";
     fi
     wget https://swift.org/builds/swift-$VERSION-release/$OS/swift-$VERSION-RELEASE/$SWIFTFILE.tar.gz
     tar -zxf $SWIFTFILE.tar.gz
