@@ -27,7 +27,7 @@ You can see which version of Bob is currently running by typing `version`
 `TravisScriptCommand` is a configurable command that triggers a job on Travis and executes a script there. The command can have multiple targets that can be specified at runtime.
 <br>The script to run for each target is speficied when the command is instantiated.
 <br>For example:<br>
-```
+```swift
 let buildTargets = [
     TravisTarget(name: "staging", script: Script("fastlane ios distribute_staging")),
     TravisTarget(name: "testflight", script: Script("fastlane ios distribute_testflight")),
@@ -40,7 +40,7 @@ would register a command with the name `build`. Typing `build staging` would sta
 ### Align Version
 iOS specific command used to change the `CFBundleShortVersionString` and `CFBundleVersion` values in specified `.plist` files.
 <br>For example:<br>
-```
+```swift
 let plistPaths: [String] = [
     "App/Info.plist",
     "siriKit/Info.plist",
@@ -65,12 +65,12 @@ Bob can be set up just as any other Swift Package, but since it relies on [Vapor
 
 Once you have the toolbox setup, you can start by creating a new project:<br>
 
-```
+```bash
 vapor new BobTheBuilder
 cd BobTheBuilder
 ```
 After the template is cloned, change the `Package.swift` file to: <br>
-```
+```swift
 import PackageDescription
 
 let package = Package(
@@ -81,17 +81,17 @@ let package = Package(
 )
 ```
 You can delete the unused template files by running:
-```
+```bash
 rm -rf Sources/App/Controllers
 rm -rf Sources/App/Models
 ```
 All of your custom code will reside in the `Sources/App` folder.<br>
 Create an Xcode project by running
-```
+```bash
 vapor xcode
 ```
 Change the `Sources/App/main.swift` file to:
-```
+```swift
 import Bob
 
 let config = Bob.Configuration(slackToken: "your-slack-token")
@@ -115,14 +115,14 @@ In order to use commands that communicate with the GitHub API, you will need to 
 ## Command chaining
 Bob supports sending multiple commands using 1 slack message. Just separate commands using `|` .
 <br> For example:<br>
-```
+```bash
 sync strings | align 3.0 5 | build staging | build testflight
 ```
 could be used when creating a release candidate for the app store. It would update the strings on the repository, set the version and build the app for 2 environments 
 
 ## Creating custom commands
 Custom commands can be created an provdided to Bob. To create a command implement the `Command` protocol.
-```
+```swift
 public protocol Command {
     
     /// The name used to idenitfy a command (`hello`, `version` etc.). Case insensitive
@@ -141,7 +141,6 @@ public protocol Command {
     func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (_ error: Error?) -> Void) throws
     
 }
-
 ```    
 The actual work happens in the `execute` method. All of the parameters the user typed in will be passed to the method as `[String]`. To inform the user about progress of the command, call the `send` method on the `sender` object. It will send the message to the user via Slack. Finally, call the `completion` block when the command is finished, passing in an `error` if it occured.
 
