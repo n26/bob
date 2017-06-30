@@ -78,6 +78,15 @@ public struct BranchName {
     }
 }
 
+public struct Commit {
+    public let sha: String
+    public let message: String
+    public init(sha: String, message: String) {
+        self.sha = sha
+        self.message = message
+    }
+}
+
 /// Used for communicating with the GitHub api
 public class GitHub {
     
@@ -156,6 +165,24 @@ public class GitHub {
             guard let commit = json["commit"] as? [String: Any] else { throw "Missing or invalid `commit` field in response from `\(request.absoluteUrlString)`" }
             guard let commitSHA = commit["sha"] as? String else { throw "Missing or invalid `sha` field in the `commit` object of the response from `\(request.absoluteUrlString)`" }
             return commitSHA
+        }, success: success, failure: failure)
+    }
+    
+    public func commits(after sha: String, page: Int, perPage: Int, success: @escaping (_ commits: [Commit]) -> Void, failure: @escaping (Error) -> Void) {
+        let path = "/commits?sha=" + sha + "&page=" + String(page) + "&per_page=" + String(perPage)
+        let request = self.request(for: path)
+        
+        self.execute(request, process: { (response) -> [Commit] in
+            guard let jsons = response as? [[String: Any]] else { throw "Expected an array from `\(request.absoluteUrlString)`" }
+            var commits: [Commit] = []
+            for json in jsons {
+                guard let sha = json["sha"] as? String else { throw "Missin `sha` property in \(request.absoluteUrlString)" }
+                guard let commitDict = json["commit"] as? [String: Any] else { throw "Expected `commit` dictionary" }
+                guard let message = commitDict["message"] as? String else { throw "Expected `message` in `commit` dictionary" }
+                commits.append(Commit(sha: sha, message: message))
+            }
+            
+            return commits
         }, success: success, failure: failure)
     }
     
