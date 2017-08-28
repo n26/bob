@@ -1,6 +1,6 @@
 # Bob 👷
 
-Bob is an extendable [Slack](https://slack.com/) bot written in Swift used to communicate with [TravisCI](https://travis-ci.com/) and [GitHub](https://github.com/) APIs. It's used to perform tasks of repetitive nature that cannot be fully automatized, such as creating release candidates for the app store.
+Bob is an extendable [Slack](https://slack.com/) bot written in Swift used to communicate with [TravisCI](https://travis-ci.com/) and [GitHub](https://github.com/) APIs. It's used to perform tasks of repetitive nature that cannot be fully automatized, such as creating release candidates for the App Store.
 
 Simply send a message to Bob on Slack, and it will do the job for you.
 
@@ -25,7 +25,7 @@ You can see which version of Bob is currently running by typing `version`
 
 ### Travis Script
 `TravisScriptCommand` is a configurable command that triggers a job on Travis and executes a script there. The command can have multiple targets that can be specified at runtime.
-<br>The script to run for each target is speficied when the command is instantiated.
+<br>The script to run for each target is specified when the command is instantiated.
 <br>For example:<br>
 ```swift
 let buildTargets = [
@@ -49,12 +49,12 @@ let plistPaths: [String] = [
 let alignCommand = AlignVersionCommand(config: gitHubConfig, defaultBranch: "Develop", plistPaths: plistPaths, author: author)
 try bob.register(alignCommand)
 ```
-would register a command that can be invoked by typing `align 3.0 4`. Bob would than create a commit on GitHub by changing the 3 specified files.
+would register a command that can be invoked by typing `align 3.0 4`. Bob would then create a commit on GitHub by changing the 3 specified files.
 
 ## Getting started
 
 ### Creating a bot on Slack
-Bob requires a slack token in order to work. You can obtain one by creating a slack bot:<br>
+Bob requires a Slack token in order to work. You can obtain one by creating a slack bot:<br>
 1. Open the custom integration page <br>
 2. Select `Bots` <br>
 3. Type in a username for your bot. `bobthebuilder` works out nicely <br>
@@ -121,7 +121,7 @@ sync strings | align 3.0 5 | build staging | build testflight
 could be used when creating a release candidate for the app store. It would update the strings on the repository, set the version and build the app for 2 environments 
 
 ## Creating custom commands
-Custom commands can be created an provdided to Bob. To create a command implement the `Command` protocol.
+Custom commands can be created an provided to Bob. To create a command implement the `Command` protocol.
 ```swift
 public protocol Command {
     
