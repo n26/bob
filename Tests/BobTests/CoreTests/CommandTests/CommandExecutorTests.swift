@@ -31,9 +31,8 @@ fileprivate class MockCommand: Command {
         self.usage = usage
     }
     
-    func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (_ error: Error?) -> Void) throws {
+    func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         self.hasBeenExecuted = true
-        completion(nil)
     }
 
 }
@@ -43,8 +42,8 @@ fileprivate class MockErroredCommand: Command {
     let usage = "usage"
     static let error = "an error message"
     
-    func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (_ error: Error?) -> Void) throws {
-        completion(MockErroredCommand.error)
+    func execute(with parameters: [String], replyingTo sender: MessageSender) -> Void) throws {
+        throw MockErroredCommand.error
     }
     
 }

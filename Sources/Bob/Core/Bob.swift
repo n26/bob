@@ -18,10 +18,11 @@
  */
 
 import Foundation
+import Vapor
 
 public class Bob {
     
-    static let version: String = "0.1.7"
+    static let version: String = "1.0.0"
     
     /// Struct containing all properties needed for Bob to function
     public struct Configuration {
@@ -43,8 +44,9 @@ public class Bob {
     /// Initializer
     ///
     /// - Parameter configuration: Configuration for setup
-    public init(config: Configuration) {
-        self.slackClient = SlackClient(token: config.slackToken)
+    /// - Parameter droplet: Droplet
+    public init(config: Configuration, droplet: Droplet) {
+        self.slackClient = SlackClient(token: config.slackToken, droplet: droplet)
         self.factory = CommandFactory(commands: [HelloCommand(), VersionCommand()])
         self.processor = CommandProcessor(factory: self.factory)
         self.executor = CommandExecutor()

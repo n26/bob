@@ -23,39 +23,36 @@ import HTTP
 import TLS
 import Transport
 
-extension HTTP.Client {
-    static func loadRealtimeApi(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws -> HTTP.Response {
+extension ClientFactoryProtocol {
+    func loadRealtimeApi(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws -> HTTP.Response {
         let headers: [HeaderKey: String] = ["Accept": "application/json; charset=utf-8"]
-        let query: [String: CustomStringConvertible] = [
+        let query: [String: NodeRepresentable] = [
             "token": token,
             "simple_latest": simpleLatest ? 1 : 0,
             "no_unreads": noUnreads ? 1 : 0
         ]
-        return try get(
+        return try self.get(
             "https://slack.com/api/rtm.start",
-            headers: headers,
-            query: query
-        )
+            query: query,
+            headers)
     }
 }
 
 class SlackClient {
 
     private let token: String
-    init(token: String) {
+    private let droplet: Droplet
+    init(token: String, droplet: Droplet) {
         self.token = token
-        defaultClientConfig = {
-            return try TLS.Config(context: try Context(mode: .client), certificates: .none, verifyHost: false, verifyCertificates: false, cipher: .compat)
-        }
+        self.droplet = droplet
     }
     
     func connect(onMessage: @escaping (_ message: String, _ sender: MessageSender) -> Void) throws {
         
-        let rtmResponse = try BasicClient.loadRealtimeApi(token: self.token)
-        guard let webSocketURL = rtmResponse.data["url"]?.string else { throw "Unable to retrieve `url` from slack. Raw response \(rtmResponse.data)" }
+        let rtmResponse = try self.droplet.client.loadRealtimeApi(token: self.token)
+        guard let webSocketURL = rtmResponse.json?["url"]?.string else { throw "Unable to retrieve `url` from slack. Reason \(rtmResponse.status.reasonPhrase). Raw response \(rtmResponse.data)" }
         
-        try WebSocket.connect(to: webSocketURL) { socket in
-            
+        try WebSocketFactory.shared.connect(to: webSocketURL) { (socket) in
             print("Connected to \(webSocketURL)")
             
             socket.onText = { ws, text in

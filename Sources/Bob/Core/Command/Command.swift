@@ -34,6 +34,6 @@ public protocol Command {
     ///   - sender: object used to send feedback to the user
     ///   - completion: block to be called when the command finishes. In case of an error, pass it in
     /// - Throws: An error is thrown if something goes wrong while executing the command, usualy while parsing the parameters
-    func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (_ error: Error?) -> Void) throws
+    func execute(with parameters: [String], replyingTo sender: MessageSender) throws
     
 }

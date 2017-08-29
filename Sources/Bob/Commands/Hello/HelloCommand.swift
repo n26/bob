@@ -29,9 +29,8 @@ class HelloCommand: Command {
         return "Just say `hello` to me. I'll reply back"
     }
     
-    func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (_ error: Error?) -> Void) throws {
+    func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         sender.send("Hi there 👋")
-        completion(nil)
     }
     
 }

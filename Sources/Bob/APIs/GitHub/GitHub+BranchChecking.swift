@@ -21,39 +21,33 @@ import Foundation
 
 public extension GitHub {
     
-    public func branchExists(_ branch: BranchName, success: @escaping (_ branchExists: Bool, _ possibleMatches: [Branch]) -> Void, failure: @escaping (_ error: Error) -> Void) {
-        // Not using GET branch to avoid 404 caused by lacking permissions
-        self.existingBranches(success: { (branches) in
-            var branchExists = false
-            let possibleMatches = branches.filter({ (remoteBranch) -> Bool in
-                if remoteBranch.name == branch.name {
-                    branchExists = true
-                } else {
-                    let distance = remoteBranch.name.levenshtein(to: branch.name)
-                    if Double(distance)/Double(branch.name.characters.count) < 0.25 {
-                        return true
-                    }
+    public func branchExists(_ branch: BranchName) throws -> (branchExists: Bool, possibleMatches: [Branch]) {
+        let branches = try self.existingBranches()
+        var branchExists = false
+        let possibleMatches = branches.filter({ (remoteBranch) -> Bool in
+            if remoteBranch.name == branch.name {
+                branchExists = true
+            } else {
+                let distance = remoteBranch.name.levenshtein(to: branch.name)
+                if Double(distance)/Double(branch.name.characters.count) < 0.25 {
+                    return true
                 }
-                return false
-            })
-            success(branchExists, possibleMatches)
-        }, failure: failure)
+            }
+            return false
+        })
+        return (branchExists, possibleMatches)
     }
     
-    public func assertBranchExists(_ branch: BranchName, success: @escaping () -> Void, failure: @escaping (_ error: Error) -> Void) {
-        
-        self.branchExists(branch, success: { (branchExists, possibleMatches) in
-            if branchExists {
-                success()
-            } else {
-                var message = "Branch `\(branch.name)` doesn't exist."
-                if possibleMatches.count > 0 {
-                    let branchesString = possibleMatches.reduce("") { $0 + "\n • " + $1.name }
-                    message = message + " Did you mean one of these:" + branchesString
-                }
-                failure(message)
+    public func assertBranchExists(_ branch: BranchName) throws {
+        let data = try self.branchExists(branch)
+        if !data.branchExists {
+            var message = "Branch `\(branch.name)` doesn't exist."
+            if data.possibleMatches.count > 0 {
+                let branchesString = data.possibleMatches.reduce("") { $0 + "\n • " + $1.name }
+                message = message + " Did you mean one of these:" + branchesString
             }
-        }, failure: failure)
+            throw message
+        }
     }
     
 }

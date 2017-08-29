@@ -21,36 +21,25 @@ import Foundation
 
 class CommandExecutor {
     
-    func execute(_ commands: [ExecutableCommand], replyingTo sender: MessageSender) {
-        self.execute(commandAt: 0, from: commands, replyingTo: sender)
-    }
-    
-    private func execute(commandAt index: Int, from commands: [ExecutableCommand], replyingTo originalSender: MessageSender) {
-        guard index < commands.count else { return }
-        let executable = commands[index]
-        
-        var sender = originalSender
-        if commands.count > 1 {
-            sender = PrefixedMessageSender(prefix: "[\(executable.command.name)]", sender: originalSender)
-        }
-        
-        if executable.parameters.first == .some("usage") {
-            sender.send(executable.command.usage)
-            self.execute(commandAt: index + 1, from: commands, replyingTo: originalSender)
-        } else {
-            do {
-                try executable.command.execute(with: executable.parameters, replyingTo: sender, completion: { (error) in
-                    if let error = error {
-                        sender.send(error.userFriendlyMessage)
-                    } else {
-                        self.execute(commandAt: index + 1, from: commands, replyingTo: originalSender)
-                    }
-                })
-            } catch {
-                sender.send(error.userFriendlyMessage)
+    func execute(_ commands: [ExecutableCommand], replyingTo originalSender: MessageSender) {
+        for executable in commands {
+            
+            var sender = originalSender
+            if commands.count > 1 {
+                sender = PrefixedMessageSender(prefix: "[\(executable.command.name)]", sender: originalSender)
+            }
+            
+            if executable.parameters.first == .some("usage") {
+                sender.send(executable.command.usage)
+            } else {
+                do {
+                    try executable.command.execute(with: executable.parameters, replyingTo: sender)
+                } catch {
+                    sender.send(error.userFriendlyMessage)
+                    break
+                }
             }
         }
-        
     }
     
 }
