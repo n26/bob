@@ -64,6 +64,10 @@ public class TravisScriptCommand {
 
 extension TravisScriptCommand: Command {
     
+    struct Constants {
+        static let branchSpecifier: String = "-b"
+    }
+    
     public var usage: String {
         let target = self.targets.count == 1 ? "" : " {{target}}"
         var message = "Triger a script by saying `\(self.name + target) {{branch}}`. I'll do the job for you. `branch` parameter is optional and it defaults to `\(self.defaultBranch)`"
@@ -76,7 +80,7 @@ extension TravisScriptCommand: Command {
         return message
     }
     
-    public func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (Error?) -> Void) throws {
+    public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         
         var params = parameters
         /// Resolve target
@@ -95,39 +99,28 @@ extension TravisScriptCommand: Command {
         
         /// Resolve branch
         var branch: BranchName = self.defaultBranch
-        if params.count > 0 {
-            branch = BranchName(params[0])
-            params.remove(at: 0)
+        if let branchSpecifierIndex = params.index(where: { $0 == Constants.branchSpecifier }) {
+            guard params.count > branchSpecifierIndex + 1 else { throw "Branch name not specified after `\(Constants.branchSpecifier)`" }
+            branch = BranchName(params[branchSpecifierIndex + 1])
+            params.remove(at: branchSpecifierIndex + 1)
+            params.remove(at: branchSpecifierIndex)
         }
         
         guard params.count == 0 else { throw "To many parameters. See `\(self.name) usage` for instructions on how to use this command" }
         
+        try self.assertGitHubBranchIfPossible(branch)
         
-        self.assertGitHubBranchIfPossible(branch, success: { 
-            let travisCI = TravisCI(config: self.config)
-            travisCI.execute(target.script, on: branch) { error in
-                if let error = error {
-                    completion(error)
-                } else {
-                    sender.send("Got it! Executing target *" + target.name + "* on branch *" + branch.name + "*")
-                    completion(nil)
-                }
-            }
-        }) { (error) in
-            completion(error)
-        }
+        let travisCI = TravisCI(config: self.config)
+        try travisCI.execute(target.script, on: branch)
+        sender.send("Got it! Executing target *" + target.name + "* on branch *" + branch.name + "*")
     }
     
-    private func assertGitHubBranchIfPossible(_ branch: BranchName, success: @escaping () -> Void, failure: @escaping (_ error: Error) ->  Void) {
+    private func assertGitHubBranchIfPossible(_ branch: BranchName) throws {
         if let gitHubConfig = self.gitHubConfig {
             /// If GitHub config is provided, perform the branch check
             let api = GitHub(config: gitHubConfig)
-            api.assertBranchExists(branch, success: success, failure: failure)
-        } else {
-            /// Otherwise, no check
-            success()
+            try api.assertBranchExists(branch)
         }
-        
     }
     
 }

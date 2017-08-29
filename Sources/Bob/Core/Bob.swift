@@ -21,7 +21,7 @@ import Foundation
 
 public class Bob {
     
-    static let version: String = "0.1.7"
+    static let version: String = "1.0.0"
     
     /// Struct containing all properties needed for Bob to function
     public struct Configuration {

@@ -36,70 +36,34 @@ fileprivate class BatchItemUpdater {
         self.updater = updater
     }
     
-    func update(using api: GitHub, success: @escaping (_ updatedItems: [TreeItem]) -> Void, failure: @escaping (_ error: Error) -> Void) {
-        
-        var updatedItems: [TreeItem] = []
-        var anyError: Error? = nil
-        let group = DispatchGroup()
-        
+    func update(using api: GitHub) throws -> [TreeItem] {
         let itemsToUpdate = self.updater.itemsToUpdate(from: self.items)
         let updater = self.updater
-        for item in itemsToUpdate {
-            group.enter()
-            api.content(forBlobWith: item.sha, success: { (content) in
-                do {
-                    let newContent = try updater.update(item, content: content)
-                    
-                    api.newBlob(with: newContent, success: { (newBlobSHA) in
-                        let newItem = TreeItem(path: item.path, mode: item.mode, type: item.type, sha: newBlobSHA)
-                        updatedItems.append(newItem)
-                        group.leave()
-                        
-                    }, failure: { (error) in
-                        anyError = error
-                    })
-                } catch {
-                    anyError = error
-                }
-            }, failure: { (error) in
-                anyError = error
-            })
+        return try itemsToUpdate.map {
+            let content = try api.content(forBlobWith: $0.sha)
+            
+            let newContent = try updater.update($0, content: content)
+            
+            let newBlobSHA = try api.newBlob(with: newContent)
+            
+            return TreeItem(path: $0.path, mode: $0.mode, type: $0.type, sha: newBlobSHA)
         }
-        group.notify(queue: DispatchQueue.global()) {
-            if let error = anyError {
-                failure(error)
-            } else {
-                success(updatedItems)
-            }
-        }
-        
     }
     
 }
 
 public extension GitHub {
     
-    public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String, success: @escaping () -> Void, failure: @escaping (_ error: Error) -> Void) {
+    public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws {
         
-        let api = self
-        
-        api.assertBranchExists(branch, success: {
-            api.currentCommitSHA(on: branch, success: { (currentCommitSHA) in
-                api.treeSHA(forCommitWith: currentCommitSHA, success: { (treeSHA) in
-                    api.treeItems(forTreeWith: treeSHA, success: { (items) in
-                        BatchItemUpdater(items: items, updater: updater).update(using: api, success: { (updatedItems) in
-                            api.newTree(withBaseSHA: treeSHA, items: updatedItems, success: { (newTreeSHA) in
-                                api.newCommit(by: author, message: message, parentSHA: currentCommitSHA, treeSHA: newTreeSHA, success: { (newCommitSHA) in
-                                    api.updateRef(to: newCommitSHA, on: branch, success: {
-                                        success()
-                                    }, failure: failure)
-                                }, failure: failure)
-                            }, failure: failure)
-                        }, failure: failure)
-                    }, failure: failure)
-                }, failure: failure)
-            }, failure: failure)
-        }, failure: failure)
+        try self.assertBranchExists(branch)
+        let currentCommitSHA = try self.currentCommitSHA(on: branch)
+        let treeSHA = try self.treeSHA(forCommitWith: currentCommitSHA)
+        let items = try self.treeItems(forTreeWith: treeSHA)
+        let updatedItems = try BatchItemUpdater(items: items, updater: updater).update(using: self)
+        let newTreeSHA = try self.newTree(withBaseSHA: treeSHA, items: updatedItems)
+        let newCommitSHA = try self.newCommit(by: author, message: message, parentSHA: currentCommitSHA, treeSHA: newTreeSHA)
+        try self.updateRef(to: newCommitSHA, on: branch)
     }
     
 }
