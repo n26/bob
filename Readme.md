@@ -136,13 +136,12 @@ public protocol Command {
     /// - Parameters:
     ///   - parameters: parameters passed to the command
     ///   - sender: object used to send feedback to the user
-    ///   - completion: block to be called when the command finishes. In case of an error, pass it in
     /// - Throws: An error is thrown if something goes wrong while executing the command, usualy while parsing the parameters
-    func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (_ error: Error?) -> Void) throws
+    func execute(with parameters: [String], replyingTo sender: MessageSender) throws
     
 }
 ```    
-The actual work happens in the `execute` method. All of the parameters the user typed in will be passed to the method as `[String]`. To inform the user about progress of the command, call the `send` method on the `sender` object. It will send the message to the user via Slack. Finally, call the `completion` block when the command is finished, passing in an `error` if it occured.
+The actual work happens in the `execute` method. All of the parameters the user typed in will be passed to the method as `[String]`. To inform the user about progress of the command, call the `send` method on the `sender` object. It will send the message to the user via Slack. If any errors occur during the execution, simply throw them.
 
 ### Using existing APIs
 

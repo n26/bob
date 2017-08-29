@@ -58,10 +58,10 @@ extension AlignVersionCommand: Command {
     }
     
     public var usage: String {
-        return "Change version and build number by typing `align {version} {build number}`. Build number defaults to `\(Constants.defaultBuildNumber)` if not specified. Specify a branch by typing`\(Constants.branchSpecifier) {branch}`, defaults to `" + self.defaultBranch.name + "`"
+        return "Change version and build number by typing `align {version} {build number}`. Build number defaults to `\(Constants.defaultBuildNumber)` if not specified. Specify a branch by typing `\(Constants.branchSpecifier) {branch}`, defaults to `" + self.defaultBranch.name + "`"
     }
     
-    public func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (Error?) -> Void) throws {
+    public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         var params = parameters
         
         var branch: BranchName = self.defaultBranch
@@ -75,13 +75,17 @@ extension AlignVersionCommand: Command {
         guard params.count > 0 else { throw "Please specify a `version` parameter. See `\(self.name) usage` for instructions on how to use this command" }
         
         let version = params[0]
-        var buildNumber: String {
-            if params.count > 1 {
-                return params[1]
-            } else {
-                return Constants.defaultBuildNumber
-            }
+        params.remove(at: 0)
+        
+        let buildNumber: String
+        if params.count > 0 {
+            buildNumber = params[0]
+            params.remove(at: 0)
+        } else {
+            buildNumber = Constants.defaultBuildNumber
         }
+        
+        guard params.count == 0 else { throw "To many parameters. See `\(self.name) usage` for instructions on how to use this command" }
         
         let api = GitHub(config: self.config)
         
@@ -90,12 +94,8 @@ extension AlignVersionCommand: Command {
         let versionString = "\(version) (\(buildNumber))"
         let message = self.messageFormat.replacingOccurrences(of: "<version>", with: versionString)
         
-        api.newCommit(updatingItemsWith: updater, on: branch, by: self.author, message: message, success: {
-            sender.send("Done. Version aligned to *" + versionString + "* on branch *" + branch.name + "*")
-            completion(nil)
-        }) { (error) in
-            completion(error)
-        }
+        try api.newCommit(updatingItemsWith: updater, on: branch, by: self.author, message: message)
+        sender.send("Done. Version aligned to *" + versionString + "* on branch *" + branch.name + "*")
     }
     
 }
