@@ -35,10 +35,6 @@ then
     wget https://swift.org/builds/swift-$VERSION-release/$OS/swift-$VERSION-RELEASE/$SWIFTFILE.tar.gz
     tar -zxf $SWIFTFILE.tar.gz
     export PATH=$PWD/$SWIFTFILE/usr/bin:"${PATH}"
-else
-    curl -O https://swift.org/builds/swift-$VERSION-release/xcode/swift-$VERSION-release/swift-$VERSION-release-osx.pkg
-    sudo installer -pkg swift-$VERSION-release-osx.pkg -target /
-    export TOOLCHAINS=swift
 fi
 
 echo "📅 Version: `swift --version`";
