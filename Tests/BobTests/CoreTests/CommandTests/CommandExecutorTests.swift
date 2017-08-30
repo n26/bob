@@ -42,7 +42,7 @@ fileprivate class MockErroredCommand: Command {
     let usage = "usage"
     static let error = "an error message"
     
-    func execute(with parameters: [String], replyingTo sender: MessageSender) -> Void) throws {
+    func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         throw MockErroredCommand.error
     }
     
