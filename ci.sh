@@ -35,6 +35,8 @@ then
     wget https://swift.org/builds/swift-$VERSION-release/$OS/swift-$VERSION-RELEASE/$SWIFTFILE.tar.gz
     tar -zxf $SWIFTFILE.tar.gz
     export PATH=$PWD/$SWIFTFILE/usr/bin:"${PATH}"
+else
+    brew tap vapor/homebrew-tap
 fi
 
 echo "📅 Version: `swift --version`";
