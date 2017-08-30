@@ -37,6 +37,7 @@ then
     export PATH=$PWD/$SWIFTFILE/usr/bin:"${PATH}"
 else
     brew tap vapor/homebrew-tap
+    brew install ctls
 fi
 
 echo "📅 Version: `swift --version`";
