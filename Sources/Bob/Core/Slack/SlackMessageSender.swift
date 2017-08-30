@@ -45,7 +45,8 @@ fileprivate struct SlackMessage {
 }
 
 extension SlackMessage: NodeRepresentable {
-    public func makeNode(context: Context) throws -> Node {
+    
+    func makeNode(in context: Context?) throws -> Node {
         return try Node(node: ["id": id, "channel": channel,
                                "type": "message",
                                "text": text])
@@ -54,9 +55,9 @@ extension SlackMessage: NodeRepresentable {
 
 extension WebSocket {
     func send(_ node: NodeRepresentable) throws {
-        let json = try node.converted(to: JSON.self)
+        let json = try node.converted(to: JSON.self, in: nil)
         let message = try json.makeBytes()
-        try send(message.string)
+        try send(message.makeString())
     }
 }
 
@@ -72,6 +73,6 @@ class SlackMessageSender: MessageSender {
     
     func send(_ message: String) {
         let slackMessage = SlackMessage(to: self.channel, text: message)
-        try? self.socket.send(slackMessage)
+        try! self.socket.send(slackMessage)
     }
 }

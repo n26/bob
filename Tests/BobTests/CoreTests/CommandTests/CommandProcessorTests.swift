@@ -25,7 +25,7 @@ fileprivate struct MockCommand: Command {
     let name: String
     let usage: String
     
-    func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (_ error: Error?) -> Void) throws { }
+    func execute(with parameters: [String], replyingTo sender: MessageSender) throws { }
 }
 
 class CommandProcessorTests: XCTestCase {

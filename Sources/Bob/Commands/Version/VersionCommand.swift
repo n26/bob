@@ -29,9 +29,8 @@ class VersionCommand: Command {
         return "Just type in `version` and I'll tell you which version I'm currently running"
     }
     
-    func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (Error?) -> Void) throws {
+    func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         sender.send("Version " + Bob.version)
-        completion(nil)
     }
     
 }

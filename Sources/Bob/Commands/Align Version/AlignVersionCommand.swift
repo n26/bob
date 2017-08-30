@@ -18,6 +18,7 @@
  */
 
 import Foundation
+import Vapor
 
 /// Command used to change the version and build numbers directly on GitHub
 public class AlignVersionCommand {
@@ -27,7 +28,7 @@ public class AlignVersionCommand {
         static let branchSpecifier: String = "-b"
     }
     
-    fileprivate let config: GitHub.Configuration
+    fileprivate let gitHub: GitHub
     fileprivate let defaultBranch: BranchName
     fileprivate let plistPaths: [String]
     fileprivate let messageFormat: String
@@ -40,8 +41,8 @@ public class AlignVersionCommand {
     ///   - plistPaths: Paths to .plist files to update. Path relative from the root of the repository
     ///   - author: Commit author. Shows up in GitHub
     ///   - messageFormat: Format for the commit message. `<version>` will be replaced with the version string
-    public init(config: GitHub.Configuration, defaultBranch: BranchName, plistPaths: [String], author: Author ,messageFormat: String = "[General] Aligns version to <version>") {
-        self.config = config
+    public init(gitHub: GitHub, defaultBranch: BranchName, plistPaths: [String], author: Author, messageFormat: String = "[General] Aligns version to <version>") {
+        self.gitHub = gitHub
         self.defaultBranch = defaultBranch
         self.plistPaths = plistPaths
         self.messageFormat = messageFormat
@@ -58,10 +59,10 @@ extension AlignVersionCommand: Command {
     }
     
     public var usage: String {
-        return "Change version and build number by typing `align {version} {build number}`. Build number defaults to `\(Constants.defaultBuildNumber)` if not specified. Specify a branch by typing`\(Constants.branchSpecifier) {branch}`, defaults to `" + self.defaultBranch.name + "`"
+        return "Change version and build number by typing `align {version} {build number}`. Build number defaults to `\(Constants.defaultBuildNumber)` if not specified. Specify a branch by typing `\(Constants.branchSpecifier) {branch}`, defaults to `" + self.defaultBranch.name + "`"
     }
     
-    public func execute(with parameters: [String], replyingTo sender: MessageSender, completion: @escaping (Error?) -> Void) throws {
+    public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         var params = parameters
         
         var branch: BranchName = self.defaultBranch
@@ -75,27 +76,25 @@ extension AlignVersionCommand: Command {
         guard params.count > 0 else { throw "Please specify a `version` parameter. See `\(self.name) usage` for instructions on how to use this command" }
         
         let version = params[0]
-        var buildNumber: String {
-            if params.count > 1 {
-                return params[1]
-            } else {
-                return Constants.defaultBuildNumber
-            }
+        params.remove(at: 0)
+        
+        let buildNumber: String
+        if params.count > 0 {
+            buildNumber = params[0]
+            params.remove(at: 0)
+        } else {
+            buildNumber = Constants.defaultBuildNumber
         }
         
-        let api = GitHub(config: self.config)
+        guard params.count == 0 else { throw "To many parameters. See `\(self.name) usage` for instructions on how to use this command" }
         
         sender.send("One sec...")
         let updater = VersionUpdater(plistPaths: self.plistPaths, version: version, buildNumber: buildNumber)
         let versionString = "\(version) (\(buildNumber))"
         let message = self.messageFormat.replacingOccurrences(of: "<version>", with: versionString)
         
-        api.newCommit(updatingItemsWith: updater, on: branch, by: self.author, message: message, success: {
-            sender.send("Done. Version aligned to *" + versionString + "* on branch *" + branch.name + "*")
-            completion(nil)
-        }) { (error) in
-            completion(error)
-        }
+        try self.gitHub.newCommit(updatingItemsWith: updater, on: branch, by: self.author, message: message)
+        sender.send("Done. Version aligned to *" + versionString + "* on branch *" + branch.name + "*")
     }
     
 }

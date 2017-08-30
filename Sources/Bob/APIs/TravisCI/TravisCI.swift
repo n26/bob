@@ -18,6 +18,8 @@
  */
 
 import Foundation
+import Vapor
+import HTTP
 
 /// Struct representing a script
 /// Additional config can also be provided
@@ -28,6 +30,26 @@ public struct Script {
     public init(_ content: String, config: [String: Any] = [:]) {
         self.content = content
         self.config = config
+    }
+}
+
+extension Dictionary where Key: ExpressibleByStringLiteral, Value: Any {
+    func makeJSON() throws -> JSON {
+        var result: [String: NodeRepresentable] = [:]
+        for (key, value) in self {
+            guard let keyString = key as? String else { throw "Key is not a string" }
+            if let stringValue = value as? String {
+                result.updateValue(stringValue, forKey: keyString)
+            } else if let dictValue = value as? [String: Any] {
+                result.updateValue(try dictValue.makeJSON(), forKey: keyString)
+            } else if let arrayValue = value as? [[String: Any]] {
+                let array = try arrayValue.map({ try $0.makeJSON() })
+                result.updateValue(try JSON(node: array), forKey: keyString)
+            } else {
+                throw "Unsupported type: \(value)"
+            }
+        }
+        return try JSON(node: result)
     }
 }
 
@@ -48,11 +70,13 @@ public class TravisCI {
     }
     
     private let config: Configuration
+    private let drop: Droplet
     /// Initializes the object with provided configuration
     ///
     /// - Parameter config: Configuration to use
-    public init(config: Configuration) {
+    public init(config: Configuration, droplet: Droplet) {
         self.config = config
+        self.drop = droplet
     }
     
     
@@ -61,35 +85,27 @@ public class TravisCI {
     /// - Parameters:
     ///   - script: Script to execute. The script should be in the repo
     ///   - branch: Branch to use when executing the script
-    ///   - completion: Closure called when the job is triggered. An error is passed if it happens
-    public func execute(_ script: Script, on branch: BranchName, completion: @escaping (_ error: Error?) -> Void) {
+    public func execute(_ script: Script, on branch: BranchName) throws {
+        let uri = self.config.repoUrl + "/requests"
         var config = script.config
         config["script"] = script.content
-        let body: [String: Any] = [
-            "request": [
+        
+        let parameters = try JSON(node: [
+            "request": try JSON(node: [
                 "branch": branch.name,
-                "config": config
-                ] as [String: Any]
-        ]
-        /// Convert is to `NSDictionary` so that the serialization 
-        /// doesn't fail
-        let nsBody = NSDictionary(dictionary: body)
+                "config": try config.makeJSON()
+                ])
+            ])
         
-        guard let url = URL(string: self.config.repoUrl)?.appendingPathComponent("requests") else {
-            completion("Invalid travis repo URL \(self.config.repoUrl)")
-            return
+        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
+        request.headers[HeaderKey("Authorization")] = "token " + self.config.token
+        request.headers[HeaderKey("Travis-API-Version")] = "3"
+        request.headers[HeaderKey("Content-Type")] = "application/json"
+        
+        let response = try self.drop.client.respond(to: request)
+        if !response.status.isSuccessfulRequest {
+            throw "Error: `" + request.uri.description + "` - " + response.status.reasonPhrase
         }
-        
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue("token " + self.config.token, forHTTPHeaderField: "Authorization")
-        request.addValue("3", forHTTPHeaderField: "Travis-API-Version")
-        request.httpBody = try! JSONSerialization.data(withJSONObject: nsBody, options: .prettyPrinted)
-        let task = URLSession.shared.dataTask(with: request, completionHandler: { data, response, error in
-            completion(error)
-        })
-        task.resume()
     }
     
 }
