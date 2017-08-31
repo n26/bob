@@ -70,7 +70,7 @@ extension TravisScriptCommand: Command {
     
     public var usage: String {
         let target = self.targets.count == 1 ? "" : " {{target}}"
-        var message = "Triger a script by saying `\(self.name + target) {{branch}}`. I'll do the job for you. `branch` parameter is optional and it defaults to `\(self.defaultBranch)`"
+        var message = "Triger a script by saying `\(self.name + target) \(Constants.branchSpecifier) {{branch}}`. I'll do the job for you. `branch` parameter is optional and it defaults to `\(self.defaultBranch.name)`"
         
         if self.targets.count != 1 {
             message += "\nAvailable targets:"
