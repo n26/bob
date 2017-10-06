@@ -48,7 +48,7 @@ extension String {
                 } else {
                     // minimum of the cost of insertion, deletion, or substitution
                     // added to the already computed costs in the corresponding cells
-                    matrix[i + 1][j + 1] = min(matrix[i][j] + 1, matrix[i + 1][j] + 1, matrix[i][j + 1] + 1)
+                    matrix[i + 1][j + 1] = Swift.min(matrix[i][j] + 1, matrix[i + 1][j] + 1, matrix[i][j + 1] + 1)
                 }
             }
         }
