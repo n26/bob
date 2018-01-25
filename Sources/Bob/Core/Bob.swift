@@ -23,7 +23,8 @@ import Vapor
 public final class Bob {
     
     static let version: String = "1.0.2"
-    
+    static let configFile: String = "bob"
+
     /// Struct containing all properties needed for Bob to function
     public struct Configuration {
         public let slackToken: String
@@ -106,7 +107,7 @@ fileprivate extension CommandFactory {
 extension Config {
     /// Resolves configured Bob configuration
     func resolveBobConfiguration() throws -> Bob.Configuration {
-        guard let token = self["bob", "slack-token"]?.string else {
+        guard let token = self[Bob.configFile, "slack-token"]?.string else {
             throw "Unable to find Slack access token. It should be found in \" Configs/bob.json\" under the key \"slack-token\"."
         }
         return Bob.Configuration(slackToken: token)

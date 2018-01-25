@@ -114,11 +114,11 @@ public final class TravisCI {
 extension Config {
     /// Resolves configured Travis CI configuration
     func resolveTravisConfiguration() throws -> TravisCI.Configuration {
-        guard let url = self["bob", "travis-repo-url"]?.string else {
+        guard let url = self[Bob.configFile, "travis-repo-url"]?.string else {
             throw "Unable to find Travis CI repo URL. It should be found in \" Configs/bob.json\" under the key \"travis-repo-url\"."
         }
 
-        guard let token = self["bob", "travis-token"]?.string else {
+        guard let token = self[Bob.configFile, "travis-token"]?.string else {
             throw "Unable to find Travis CI access token. It should be found in \" Configs/bob.json\" under the key \"travis-token\"."
         }
         return TravisCI.Configuration(repoUrl: url, token: token)

@@ -292,13 +292,13 @@ public final class GitHub {
 extension Config {
     /// Resolves configured GitHub configuration
     func resolveGitHubConfiguration() throws -> GitHub.Configuration {
-        guard let user = self["bob", "github-username"]?.string else {
+        guard let user = self[Bob.configFile, "github-username"]?.string else {
             throw "Unable to find GitHub username. It should be found in \" Configs/bob.json\" under the key \"github-username\"."
         }
-        guard let token = self["bob", "github-access-token"]?.string else {
+        guard let token = self[Bob.configFile, "github-access-token"]?.string else {
             throw "Unable to find GitHub personal access token. It should be found in \" Configs/bob.json\" under the key \"github-access-token\"."
         }
-        guard let repoURL = self["bob", "github-repo-url"]?.string else {
+        guard let repoURL = self[Bob.configFile, "github-repo-url"]?.string else {
             throw "Unable to find GitHub repository URL. It should be found in \" Configs/bob.json\" under the key \"github-repo-url\"."
         }
         return GitHub.Configuration(username: user, personalAccessToken: token, repoUrl: repoURL)
