@@ -102,3 +102,13 @@ fileprivate extension CommandFactory {
     }
     
 }
+
+extension Config {
+    /// Resolves configured Bob configuration
+    func resolveBobConfiguration() throws -> Bob.Configuration {
+        guard let token = self["bob", "slack-token"]?.string else {
+            throw "Unable to find Slack access token. It should be found in \" Configs/bob.json\" under the key \"slack-token\"."
+        }
+        return Bob.Configuration(slackToken: token)
+    }
+}
