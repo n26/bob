@@ -28,29 +28,48 @@ You can see which version of Bob is currently running by typing `version`
 <br>The script to run for each target is specified when the command is instantiated.
 <br>For example:<br>
 ```swift
+let config = try Config()
 let buildTargets = [
     TravisTarget(name: "staging", script: Script("fastlane ios distribute_staging")),
     TravisTarget(name: "testflight", script: Script("fastlane ios distribute_testflight")),
 ]
-let buildCommand = TravisScriptCommand(name: "build", config: travisConfig, targets: buildTargets, defaultBranch: "Develop")
+let travisCI = try TravisCI(config: config)
+let buildCommand = TravisScriptCommand(name: "build", travis: travisCI, targets: buildTargets, defaultBranch: BranchName("develop"))
 try bob.register(buildCommand)
 ```
-would register a command with the name `build`. Typing `build staging` would start the lane `distribute_staging` on Travis.
-
+would register a command with the name `build`. Typing `build staging` would start the lane `distribute_staging` on Travis. 
+Your `bob.json` file should look like this (replace your token & urls)
+```json
+{
+  "travis-repo-url": "<# Url of the repo. Along the lines of https://api.travis-ci.com/repo/{owner%2Frepo} #>",
+  "travis-token": <# Travis CI access token #>
+  <# other configurations #>
+}
+```
 ### Align Version
 iOS specific command used to change the `CFBundleShortVersionString` and `CFBundleVersion` values in specified `.plist` files.
 <br>For example:<br>
 ```swift
+let config = try Config()
 let plistPaths: [String] = [
     "App/Info.plist",
     "siriKit/Info.plist",
     "siriKitUI/Info.plist"
 ]
-let alignCommand = AlignVersionCommand(config: gitHubConfig, defaultBranch: "Develop", plistPaths: plistPaths, author: author)
+let gitHub = try GitHub(config: config)
+let alignCommand = AlignVersionCommand(gitHub: gitHub, defaultBranch: BranchName("develop"), plistPaths: plistPaths, author: Author(name: "bob", email: "bob@example.com"))
 try bob.register(alignCommand)
 ```
 would register a command that can be invoked by typing `align 3.0 4`. Bob would then create a commit on GitHub by changing the 3 specified files.
-
+Your `bob.json` file should look like this (replace your token & urls)
+```json
+{
+  "github-username": <# Username of authenticated Github user  #>,
+  "github-access-token": <# Persoanl access token for the authenticated user #>,
+  "github-repo-url": <# Url of the repo. Alogn the lines of https://api.github.com/repos/{owner}/{repo}  #>,
+  <# other configurations #>
+}
+```
 ## Getting started
 
 ### Creating a bot on Slack
@@ -85,6 +104,15 @@ You can delete the unused template files by running:
 rm -rf Sources/App/Controllers
 rm -rf Sources/App/Models
 ```
+
+All of your configured tokens will reside in `bob.json` file in the `Config` folder. It should look like this (replace your token), and you can add this file to your `.gitignore`.
+```json
+{
+  "slack-token": <# Slack bot token  #>,
+  <# other configurations #>
+}
+```
+
 All of your custom code will reside in the `Sources/App` folder.<br>
 Create an Xcode project by running
 ```bash
@@ -94,9 +122,9 @@ Change the `Sources/App/main.swift` file to:
 ```swift
 import Bob
 
-let config = Bob.Configuration(slackToken: "your-slack-token")
+let config = try Config()
 let bob = Bob(config: config)
-
+<# register commands #>
 try bob.start()
 ```
 and you're good to go. Select the `App` scheme and run it. You can now send messages to `Bob` via Slack, and it will respond.
