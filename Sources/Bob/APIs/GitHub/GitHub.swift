@@ -82,7 +82,7 @@ public struct Commit {
 }
 
 /// Used for communicating with the GitHub api
-public class GitHub {
+public final class GitHub {
     
     /// Configuration needed for authentication with the api
     public struct Configuration {
@@ -104,12 +104,12 @@ public class GitHub {
     
     private let base64LoginData: String
     private let repoUrl: String
-    private let drop: Droplet
-    public init(config: Configuration, droplet: Droplet) {
+    private let client: ClientFactoryProtocol
+    public init(config: Configuration, client: ClientFactoryProtocol) {
         let authString = config.username + ":" + config.personalAccessToken
         self.base64LoginData = authString.data(using: .utf8)!.base64EncodedString()
         self.repoUrl = config.repoUrl
-        self.drop = droplet
+        self.client = client
     }
     
     private func uri(at path: String) -> String {
@@ -118,7 +118,7 @@ public class GitHub {
     
     private func perform(_ request: Request) throws -> JSON {
         request.headers[HeaderKey("Authorization")] = "Basic " + self.base64LoginData
-        let response = try self.drop.client.respond(to: request)
+        let response = try self.client.respond(to: request)
         if response.status.isSuccessfulRequest {
             if let json = response.json {
                 return json
@@ -287,4 +287,28 @@ public class GitHub {
         _ = try self.perform(request)
     }
     
+}
+
+extension Config {
+    /// Resolves configured GitHub configuration
+    func resolveGitHubConfiguration() throws -> GitHub.Configuration {
+        guard let user = self[Bob.configFile, "github-username"]?.string else {
+            throw "Unable to find GitHub username. It should be found in \" Configs/bob.json\" under the key \"github-username\"."
+        }
+        guard let token = self[Bob.configFile, "github-access-token"]?.string else {
+            throw "Unable to find GitHub personal access token. It should be found in \" Configs/bob.json\" under the key \"github-access-token\"."
+        }
+        guard let repoURL = self[Bob.configFile, "github-repo-url"]?.string else {
+            throw "Unable to find GitHub repository URL. It should be found in \" Configs/bob.json\" under the key \"github-repo-url\"."
+        }
+        return GitHub.Configuration(username: user, personalAccessToken: token, repoUrl: repoURL)
+    }
+}
+
+extension GitHub: ConfigInitializable {
+    public convenience init(config: Config) throws {
+        let configuration = try config.resolveGitHubConfiguration()
+        let client = try config.resolveClient()
+        self.init(config: configuration, client: client)
+    }
 }

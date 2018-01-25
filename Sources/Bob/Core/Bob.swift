@@ -20,10 +20,11 @@
 import Foundation
 import Vapor
 
-public class Bob {
+public final class Bob {
     
     static let version: String = "1.0.2"
-    
+    static let configFile: String = "bob"
+
     /// Struct containing all properties needed for Bob to function
     public struct Configuration {
         public let slackToken: String
@@ -44,9 +45,9 @@ public class Bob {
     /// Initializer
     ///
     /// - Parameter configuration: Configuration for setup
-    /// - Parameter droplet: Droplet
-    public init(config: Configuration, droplet: Droplet) {
-        self.slackClient = SlackClient(token: config.slackToken, droplet: droplet)
+    /// - Parameter client: HTTP Client to use
+    public init(config: Configuration, client: ClientFactoryProtocol) {
+        self.slackClient = SlackClient(token: config.slackToken, client: client)
         self.factory = CommandFactory(commands: [HelloCommand(), VersionCommand()])
         self.processor = CommandProcessor(factory: self.factory)
         self.executor = CommandExecutor()
@@ -101,4 +102,22 @@ fileprivate extension CommandFactory {
         return string
     }
     
+}
+
+extension Config {
+    /// Resolves configured Bob configuration
+    func resolveBobConfiguration() throws -> Bob.Configuration {
+        guard let token = self[Bob.configFile, "slack-token"]?.string else {
+            throw "Unable to find Slack access token. It should be found in \" Configs/bob.json\" under the key \"slack-token\"."
+        }
+        return Bob.Configuration(slackToken: token)
+    }
+}
+
+extension Bob: ConfigInitializable {
+    public convenience init(config: Config) throws {
+        let configuration = try config.resolveBobConfiguration()
+        let client = try config.resolveClient()
+        self.init(config: configuration, client: client)
+    }
 }
