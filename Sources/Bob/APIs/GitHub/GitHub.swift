@@ -104,12 +104,12 @@ public class GitHub {
     
     private let base64LoginData: String
     private let repoUrl: String
-    private let drop: Droplet
-    public init(config: Configuration, droplet: Droplet) {
+    private let client: ClientFactoryProtocol
+    public init(config: Configuration, client: ClientFactoryProtocol) {
         let authString = config.username + ":" + config.personalAccessToken
         self.base64LoginData = authString.data(using: .utf8)!.base64EncodedString()
         self.repoUrl = config.repoUrl
-        self.drop = droplet
+        self.client = client
     }
     
     private func uri(at path: String) -> String {
@@ -118,7 +118,7 @@ public class GitHub {
     
     private func perform(_ request: Request) throws -> JSON {
         request.headers[HeaderKey("Authorization")] = "Basic " + self.base64LoginData
-        let response = try self.drop.client.respond(to: request)
+        let response = try self.client.respond(to: request)
         if response.status.isSuccessfulRequest {
             if let json = response.json {
                 return json

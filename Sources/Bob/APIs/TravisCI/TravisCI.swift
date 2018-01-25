@@ -54,7 +54,7 @@ extension Dictionary where Key: ExpressibleByStringLiteral, Value: Any {
 }
 
 /// Used for communication with TravisCI api
-public class TravisCI {
+public final class TravisCI {
     
     
     /// Configuration needed for authentication with the api
@@ -70,13 +70,14 @@ public class TravisCI {
     }
     
     private let config: Configuration
-    private let drop: Droplet
+    private let client: ClientFactoryProtocol
     /// Initializes the object with provided configuration
     ///
     /// - Parameter config: Configuration to use
-    public init(config: Configuration, droplet: Droplet) {
+    /// - Parameter client: HTTP Client factory to use
+    public init(config: Configuration, client: ClientFactoryProtocol) {
         self.config = config
-        self.drop = droplet
+        self.client = client
     }
     
     
@@ -102,10 +103,9 @@ public class TravisCI {
         request.headers[HeaderKey("Travis-API-Version")] = "3"
         request.headers[HeaderKey("Content-Type")] = "application/json"
         
-        let response = try self.drop.client.respond(to: request)
+        let response = try self.client.respond(to: request)
         if !response.status.isSuccessfulRequest {
             throw "Error: `" + request.uri.description + "` - " + response.status.reasonPhrase
         }
     }
-    
 }

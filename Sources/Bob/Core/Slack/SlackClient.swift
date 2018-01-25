@@ -41,15 +41,15 @@ extension ClientFactoryProtocol {
 class SlackClient {
 
     private let token: String
-    private let droplet: Droplet
-    init(token: String, droplet: Droplet) {
+    private let client: ClientFactoryProtocol
+    init(token: String, client: ClientFactoryProtocol) {
         self.token = token
-        self.droplet = droplet
+        self.client = client
     }
     
     func connect(onMessage: @escaping (_ message: String, _ sender: MessageSender) -> Void) throws {
         
-        let rtmResponse = try self.droplet.client.loadRealtimeApi(token: self.token)
+        let rtmResponse = try self.client.loadRealtimeApi(token: self.token)
         guard let webSocketURL = rtmResponse.json?["url"]?.string else { throw "Unable to retrieve `url` from slack. Reason \(rtmResponse.status.reasonPhrase). Raw response \(rtmResponse.data)" }
         
         try WebSocketFactory.shared.connect(to: webSocketURL) { (socket) in
