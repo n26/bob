@@ -124,3 +124,11 @@ extension Config {
         return TravisCI.Configuration(repoUrl: url, token: token)
     }
 }
+
+extension TravisCI: ConfigInitializable {
+    public convenience init(config: Config) throws {
+        let configuration = try config.resolveTravisConfiguration()
+        let client = try config.resolveClient()
+        self.init(config: configuration, client: client)
+    }
+}

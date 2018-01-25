@@ -20,7 +20,7 @@
 import Foundation
 import Vapor
 
-public class Bob {
+public final class Bob {
     
     static let version: String = "1.0.2"
     
@@ -110,5 +110,13 @@ extension Config {
             throw "Unable to find Slack access token. It should be found in \" Configs/bob.json\" under the key \"slack-token\"."
         }
         return Bob.Configuration(slackToken: token)
+    }
+}
+
+extension Bob: ConfigInitializable {
+    public convenience init(config: Config) throws {
+        let configuration = try config.resolveBobConfiguration()
+        let client = try config.resolveClient()
+        self.init(config: configuration, client: client)
     }
 }

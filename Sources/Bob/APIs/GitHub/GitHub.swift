@@ -82,7 +82,7 @@ public struct Commit {
 }
 
 /// Used for communicating with the GitHub api
-public class GitHub {
+public final class GitHub {
     
     /// Configuration needed for authentication with the api
     public struct Configuration {
@@ -302,5 +302,13 @@ extension Config {
             throw "Unable to find GitHub repository URL. It should be found in \" Configs/bob.json\" under the key \"github-repo-url\"."
         }
         return GitHub.Configuration(username: user, personalAccessToken: token, repoUrl: repoURL)
+    }
+}
+
+extension GitHub: ConfigInitializable {
+    public convenience init(config: Config) throws {
+        let configuration = try config.resolveGitHubConfiguration()
+        let client = try config.resolveClient()
+        self.init(config: configuration, client: client)
     }
 }
