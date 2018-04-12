@@ -24,7 +24,14 @@ public protocol ItemUpdater {
     
     func itemsToUpdate(from items: [TreeItem]) -> [TreeItem]
     func update(_ item: TreeItem, content: String) throws -> String
+}
+
+public class ItemUpdaterWithOutput<OUTPUT>: ItemUpdater {
+    var output: OUTPUT?
     
+    public func itemsToUpdate(from items: [TreeItem]) -> [TreeItem] { fatalError("Not implemented.") }
+    
+    public func update(_ item: TreeItem, content: String) throws -> String { fatalError("Not implemented.") }
 }
 
 fileprivate class BatchItemUpdater {
@@ -54,8 +61,9 @@ fileprivate class BatchItemUpdater {
 
 public extension GitHub {
     
+    public class CommitMessageUpdater: ItemUpdaterWithOutput<[String:String]> { }
+    
     public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws {
-        
         try self.assertBranchExists(branch)
         let currentCommitSHA = try self.currentCommitSHA(on: branch)
         let treeSHA = try self.treeSHA(forCommitWith: currentCommitSHA)
@@ -64,6 +72,27 @@ public extension GitHub {
         let newTreeSHA = try self.newTree(withBaseSHA: treeSHA, items: updatedItems)
         let newCommitSHA = try self.newCommit(by: author, message: message, parentSHA: currentCommitSHA, treeSHA: newTreeSHA)
         try self.updateRef(to: newCommitSHA, on: branch)
+    }
+    
+    public func newCommit<T>(updatingItemsWith updater: ItemUpdaterWithOutput<T>, on branch: BranchName, by author: Author, message: String, completion: ( (T?) -> () )? = nil) throws {
+        try self.assertBranchExists(branch)
+        let currentCommitSHA = try self.currentCommitSHA(on: branch)
+        let treeSHA = try self.treeSHA(forCommitWith: currentCommitSHA)
+        let items = try self.treeItems(forTreeWith: treeSHA)
+        let updatedItems = try BatchItemUpdater(items: items, updater: updater).update(using: self)
+        
+        var message = message
+        if let `updater` = updater as? CommitMessageUpdater, let output = updater.output {
+            output.keys.forEach {
+                message = message.replacingOccurrences(of: "<\($0)>", with: output[$0]!)
+            }
+        }
+        
+        let newTreeSHA = try self.newTree(withBaseSHA: treeSHA, items: updatedItems)
+        let newCommitSHA = try self.newCommit(by: author, message: message, parentSHA: currentCommitSHA, treeSHA: newTreeSHA)
+        try self.updateRef(to: newCommitSHA, on: branch)
+        
+        completion?(updater.output)
     }
     
 }

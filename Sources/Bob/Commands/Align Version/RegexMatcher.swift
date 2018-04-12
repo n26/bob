@@ -26,6 +26,23 @@ public class RegexMatcher {
         self.text = text
     }
     
+    /// Returns groups matching a regex
+    ///
+    /// - Parameters:
+    ///   - regexString: Regex to match
+    public func matches(stringMatching regexString: String) -> [String] {
+        do {
+            let regex = try NSRegularExpression(pattern: regexString)
+            let matches = regex.matches(in: text,
+                                        range: NSRange(text.startIndex..., in: text))
+            return matches.map {
+                String(text[Range($0.range, in: text)!])
+            }
+        } catch {
+            return []
+        }
+    }
+    
     /// Replaces group matching regex with a replacement
     ///
     /// - Parameters:
