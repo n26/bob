@@ -33,8 +33,7 @@ public class RegexMatcher {
     public func matches(stringMatching regexString: String) -> [String] {
         do {
             let regex = try NSRegularExpression(pattern: regexString)
-            let matches = regex.matches(in: text,
-                                        range: NSRange(text.startIndex..., in: text))
+            let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
             return matches.map {
                 String(text[Range($0.range, in: text)!])
             }
