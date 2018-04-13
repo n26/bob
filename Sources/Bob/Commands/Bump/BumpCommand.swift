@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 N26 GmbH.
+ * Copyright (c) 2018 N26 GmbH.
  *
  * This file is part of Bob.
  *
@@ -71,14 +71,47 @@ extension BumpCommand: Command {
         }
         
         sender.send("One sec...")
-        let updater = BumpUpdater(plistPaths: self.plistPaths)
+        let versionFiles = try self.gitHub.currentState(on: branch).items.filter { $0.path == plistPaths[0] }
         
-        try self.gitHub.newCommit(updatingItemsWith: updater, on: branch, by: self.author, message: self.message, completion: { output in
-            guard let version = output?["version"], let buildNumber = output?["buildNumber"] else {
-                sender.send("Done. Build number bumped up.")
-                return
+        guard let versionAndBuildNumber = try versionFiles.first.map ({ item -> (String, String) in
+            
+            let content = try self.gitHub.content(forBlobWith: item.sha)
+            
+            let matcher = RegexMatcher(text: content)
+            var output = ("","")
+            
+            let versions = matcher.matches(stringMatching: PListHelpers.versionRegexString)
+            if let version = versions.first {
+                let versionString = PListHelpers.extractStringValue(from: version)
+                output.0 = versionString
             }
-            sender.send("Done. Build number bumped up. New version is \(version) (\(buildNumber)).")
-        })
+            
+            let buildNumbers = matcher.matches(stringMatching: PListHelpers.buildNumberRegexString)
+            
+            if let first = buildNumbers.first {
+                let buildNumberText = PListHelpers.extractStringValue(from: first)
+                output.1 = buildNumberText
+            }
+            
+            return output
+        }) else {
+            sender.send("Failed to extract build number.")
+            return
+        }
+        
+        guard let numericBuildNumber = Int(versionAndBuildNumber.1) else {
+            sender.send("Could not bump up build number because it's not numeric. Current value is *\(versionAndBuildNumber.1)*.")
+            return
+        }
+        
+        let newBuildNumber = String(numericBuildNumber + 1)
+        let align = VersionUpdater(plistPaths: plistPaths, version: versionAndBuildNumber.0, buildNumber: newBuildNumber)
+        
+        let message = self.message.replacingOccurrences(of: "<version>", with: versionAndBuildNumber.0)
+                                    .replacingOccurrences(of: "<buildNumber>", with: newBuildNumber)
+        
+        try self.gitHub.newCommit(updatingItemsWith: align, on: branch, by: self.author, message: message)
+        
+        sender.send("Done. Build number bumped up. New version is \(versionAndBuildNumber.0) (\(newBuildNumber)).")
     }
 }

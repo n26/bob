@@ -26,14 +26,6 @@ public protocol ItemUpdater {
     func update(_ item: TreeItem, content: String) throws -> String
 }
 
-public class ItemUpdaterWithOutput<OUTPUT>: ItemUpdater {
-    var output: OUTPUT?
-    
-    public func itemsToUpdate(from items: [TreeItem]) -> [TreeItem] { fatalError("Not implemented.") }
-    
-    public func update(_ item: TreeItem, content: String) throws -> String { fatalError("Not implemented.") }
-}
-
 fileprivate class BatchItemUpdater {
     
     private let items: [TreeItem]
@@ -61,38 +53,26 @@ fileprivate class BatchItemUpdater {
 
 public extension GitHub {
     
-    typealias CommitMessageUpdater = ItemUpdaterWithOutput<[String:String]>
-    
-    public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws {
-        try self.assertBranchExists(branch)
-        let currentCommitSHA = try self.currentCommitSHA(on: branch)
-        let treeSHA = try self.treeSHA(forCommitWith: currentCommitSHA)
-        let items = try self.treeItems(forTreeWith: treeSHA)
-        let updatedItems = try BatchItemUpdater(items: items, updater: updater).update(using: self)
-        let newTreeSHA = try self.newTree(withBaseSHA: treeSHA, items: updatedItems)
-        let newCommitSHA = try self.newCommit(by: author, message: message, parentSHA: currentCommitSHA, treeSHA: newTreeSHA)
-        try self.updateRef(to: newCommitSHA, on: branch)
+    struct CurrentState {
+        let items: [TreeItem]
+        let currentCommitSHA: String
+        let treeSHA: String
     }
     
-    public func newCommit<T>(updatingItemsWith updater: ItemUpdaterWithOutput<T>, on branch: BranchName, by author: Author, message: String, completion: ( (T?) -> () )? = nil) throws {
+    public func currentState(on branch: BranchName) throws -> CurrentState {
         try self.assertBranchExists(branch)
         let currentCommitSHA = try self.currentCommitSHA(on: branch)
         let treeSHA = try self.treeSHA(forCommitWith: currentCommitSHA)
         let items = try self.treeItems(forTreeWith: treeSHA)
-        let updatedItems = try BatchItemUpdater(items: items, updater: updater).update(using: self)
-        
-        var message = message
-        if let output = updater.output as? [String:String] {
-            output.keys.forEach {
-                message = message.replacingOccurrences(of: "<\($0)>", with: output[$0]!)
-            }
-        }
-        
-        let newTreeSHA = try self.newTree(withBaseSHA: treeSHA, items: updatedItems)
-        let newCommitSHA = try self.newCommit(by: author, message: message, parentSHA: currentCommitSHA, treeSHA: newTreeSHA)
+        return CurrentState(items: items, currentCommitSHA: currentCommitSHA, treeSHA: treeSHA)
+    }
+    
+    public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws {
+        let repositoryState = try self.currentState(on: branch)
+        let updatedItems = try BatchItemUpdater(items: repositoryState.items, updater: updater).update(using: self)
+        let newTreeSHA = try self.newTree(withBaseSHA: repositoryState.treeSHA, items: updatedItems)
+        let newCommitSHA = try self.newCommit(by: author, message: message, parentSHA: repositoryState.currentCommitSHA, treeSHA: newTreeSHA)
         try self.updateRef(to: newCommitSHA, on: branch)
-        
-        completion?(updater.output)
     }
     
 }
