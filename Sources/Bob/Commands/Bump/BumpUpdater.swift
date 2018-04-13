@@ -69,21 +69,12 @@ class BumpUpdater: ItemUpdaterWithOutput<[String:String]> {
     }
     
     private func extractValue(from text: String) -> String {
-        do {
-            let regex = try NSRegularExpression(pattern: "<string>(.+?)</string>")
-            let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
-            
-            guard let groupRange = matches.first?.rangeAt(0) else {
-                return ""
-            }
-            
-            let match = (text as NSString).substring(with: groupRange)
-                .replacingOccurrences(of: "<string>", with: "")
-                .replacingOccurrences(of: "</string>", with: "")
-            
-            return match
-        } catch {
+        let matches = RegexMatcher(text: text).matches(stringMatching: "<string>(.+?)</string>")
+        
+        guard matches.count > 0 else {
             return ""
         }
+
+        return matches[0].replacingOccurrences(of: "<string>", with: "").replacingOccurrences(of: "</string>", with: "")
     }
 }

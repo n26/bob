@@ -31,15 +31,29 @@ public class RegexMatcher {
     /// - Parameters:
     ///   - regexString: Regex to match
     public func matches(stringMatching regexString: String) -> [String] {
-        do {
-            let regex = try NSRegularExpression(pattern: regexString)
-            let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
-            return matches.map {
-                String(text[Range($0.range, in: text)!])
+        
+        var ranges = [Range<String.Index>]()
+        
+        var range: Range<String.Index>? = Range<String.Index>(uncheckedBounds: (lower: text.startIndex, upper: text.endIndex))
+        
+        while range != nil {
+            let newRange = text.range(of: regexString, options: .regularExpression, range: range)
+            
+            if let `newRange` = newRange {
+                ranges.append(newRange)
+                range = Range<String.Index>(uncheckedBounds: (lower: newRange.upperBound, upper: text.endIndex))
+            } else {
+                range = nil
             }
-        } catch {
-            return []
         }
+        
+        var matches = [String]()
+        
+        ranges.forEach {
+            matches.append(String(text.substring(with: $0)))
+        }
+        
+        return matches
     }
     
     /// Replaces group matching regex with a replacement
