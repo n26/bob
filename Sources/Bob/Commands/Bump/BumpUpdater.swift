@@ -19,7 +19,7 @@
 
 import Foundation
 
-class BumpUpdater: ItemUpdaterWithOutput<[String:String]> {
+class BumpUpdater: GitHub.CommitMessageUpdater {
     
     struct Constants {
         static let versionRegexString: String = "<key>CFBundleShortVersionString<\\/key>\\s*<string>(\\S+)<\\/string>"

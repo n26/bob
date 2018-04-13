@@ -61,6 +61,8 @@ fileprivate class BatchItemUpdater {
 
 public extension GitHub {
     
+    typealias CommitMessageUpdater = ItemUpdaterWithOutput<[String:String]>
+    
     public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws {
         try self.assertBranchExists(branch)
         let currentCommitSHA = try self.currentCommitSHA(on: branch)
