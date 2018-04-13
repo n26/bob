@@ -40,7 +40,7 @@ public class BumpCommand {
     ///   - plistPaths: Paths to .plist files to update. Path relative from the root of the repository
     ///   - author: Commit author. Shows up in GitHub
     ///   - messageFormat: Format for the commit message. `<version>` will be replaced with the version string
-    public init(gitHub: GitHub, defaultBranch: BranchName, plistPaths: [String], author: Author, message: String = "[General] Bumps version to <version> (<buildNumber>).") {
+    public init(gitHub: GitHub, defaultBranch: BranchName, plistPaths: [String], author: Author, message: String = "[General] Aligns version to <version> (<buildNumber>).") {
         self.gitHub = gitHub
         self.defaultBranch = defaultBranch
         self.plistPaths = plistPaths
@@ -60,6 +60,10 @@ extension BumpCommand: Command {
     }
     
     public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
+        guard plistPaths.count > 0 else {
+            throw "Failed to bump. Misconfiguration of the `bump` command. Missing Plist file paths."
+        }
+        
         var params = parameters
         
         var branch: BranchName = self.defaultBranch
@@ -84,6 +88,8 @@ extension BumpCommand: Command {
             if let version = versions.first {
                 let versionString = PListHelpers.extractStringValue(from: version)
                 output.0 = versionString
+            } else {
+                throw "Failed to bump version. Could not find version number in Plist file."
             }
             
             let buildNumbers = matcher.matches(stringMatching: PListHelpers.buildNumberRegexString)
@@ -91,6 +97,8 @@ extension BumpCommand: Command {
             if let first = buildNumbers.first {
                 let buildNumberText = PListHelpers.extractStringValue(from: first)
                 output.1 = buildNumberText
+            } else {
+                throw "Failed to bump version. Could not find build number in Plist file."
             }
             
             return output
@@ -107,8 +115,8 @@ extension BumpCommand: Command {
         let newBuildNumber = String(numericBuildNumber + 1)
         let align = VersionUpdater(plistPaths: plistPaths, version: versionAndBuildNumber.0, buildNumber: newBuildNumber)
         
-        let message = self.message.replacingOccurrences(of: "<version>", with: versionAndBuildNumber.0)
-                                    .replacingOccurrences(of: "<buildNumber>", with: newBuildNumber)
+        let versionString = "\(versionAndBuildNumber.0) (\(newBuildNumber))"
+        let message = self.message.replacingOccurrences(of: "<version>", with: versionString)
         
         try self.gitHub.newCommit(updatingItemsWith: align, on: branch, by: self.author, message: message)
         
