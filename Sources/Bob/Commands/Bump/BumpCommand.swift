@@ -40,7 +40,7 @@ public class BumpCommand {
     ///   - plistPaths: Paths to .plist files to update. Path relative from the root of the repository
     ///   - author: Commit author. Shows up in GitHub
     ///   - messageFormat: Format for the commit message. `<version>` will be replaced with the version string
-    public init(gitHub: GitHub, defaultBranch: BranchName, plistPaths: [String], author: Author, message: String = "[General] Aligns version to <version> (<buildNumber>).") {
+    public init(gitHub: GitHub, defaultBranch: BranchName, plistPaths: [String], author: Author, message: String = "[General] Aligns version to <version>") {
         self.gitHub = gitHub
         self.defaultBranch = defaultBranch
         self.plistPaths = plistPaths
