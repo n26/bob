@@ -80,7 +80,7 @@ public extension GitHub {
         let updatedItems = try BatchItemUpdater(items: items, updater: updater).update(using: self)
         
         var message = message
-        if let `updater` = updater as? ItemUpdaterWithOutput<[String:String]>, let output = updater.output {
+        if let output = updater.output as? [String:String] {
             output.keys.forEach {
                 message = message.replacingOccurrences(of: "<\($0)>", with: output[$0]!)
             }

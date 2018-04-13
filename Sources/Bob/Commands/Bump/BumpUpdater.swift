@@ -71,7 +71,7 @@ class BumpUpdater: ItemUpdaterWithOutput<[String:String]> {
     private func extractValue(from text: String) -> String {
         do {
             let regex = try NSRegularExpression(pattern: "<string>(.+?)</string>")
-            let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
+            let matches = regex.matches(in: text, range: NSRange(location: 0, length: text.count))
             
             guard let groupRange = matches.first?.rangeAt(0) else {
                 return ""
