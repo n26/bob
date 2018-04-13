@@ -22,7 +22,7 @@ import Vapor
 
 public class Bob {
     
-    static let version: String = "1.0.2"
+    static let version: String = "1.1.0"
     
     /// Struct containing all properties needed for Bob to function
     public struct Configuration {
