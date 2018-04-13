@@ -21,13 +21,6 @@ import Foundation
 
 class VersionUpdater: ItemUpdater {
     
-    struct Constants {
-        static let versionRegexString: String = "<key>CFBundleShortVersionString<\\/key>\\s*<string>(\\S+)<\\/string>"
-        static let versionKey: String = "CFBundleShortVersionString"
-        static let buildNumberRegexString: String = "<key>CFBundleVersion<\\/key>\\s*<string>(\\S+)<\\/string>"
-        static let buildNumberKey: String = "CFBundleVersion"
-    }
-    
     private let plistPaths: [String]
     private let version: String
     private let buildNumber: String
@@ -43,13 +36,8 @@ class VersionUpdater: ItemUpdater {
     
     func update(_ item: TreeItem, content: String) throws -> String {
         let matcher = RegexMatcher(text: content)
-        matcher.replace(stringMatching: Constants.versionRegexString, with: self.replacementString(for: Constants.versionKey, value: self.version))
-        matcher.replace(stringMatching: Constants.buildNumberRegexString, with: self.replacementString(for: Constants.buildNumberKey, value: self.buildNumber))
+        matcher.replace(stringMatching: PListHelpers.versionRegexString, with: PListHelpers.replacementString(for: PListHelpers.versionKey, value: self.version))
+        matcher.replace(stringMatching: PListHelpers.buildNumberRegexString, with: PListHelpers.replacementString(for: PListHelpers.buildNumberKey, value: self.buildNumber))
         return matcher.result
     }
-    
-    private func replacementString(for key: String, value: String) -> String {
-        return "<key>" + key + "<\\/key>\n\t<string>" + value + "<\\/string>"
-    }
-    
 }

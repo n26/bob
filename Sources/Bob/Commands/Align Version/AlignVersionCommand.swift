@@ -63,6 +63,10 @@ extension AlignVersionCommand: Command {
     }
     
     public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
+        guard plistPaths.count > 0 else {
+            throw "Failed to align version. Misconfiguration of the `align` command. Missing Plist file paths."
+        }
+        
         var params = parameters
         
         var branch: BranchName = self.defaultBranch

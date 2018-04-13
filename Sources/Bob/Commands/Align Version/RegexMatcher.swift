@@ -26,6 +26,36 @@ public class RegexMatcher {
         self.text = text
     }
     
+    /// Returns groups matching a regex
+    ///
+    /// - Parameters:
+    ///   - regexString: Regex to match
+    public func matches(stringMatching regexString: String) -> [String] {
+        
+        var ranges = [Range<String.Index>]()
+        
+        var range: Range<String.Index>? = Range<String.Index>(uncheckedBounds: (lower: text.startIndex, upper: text.endIndex))
+        
+        while range != nil {
+            let newRange = text.range(of: regexString, options: .regularExpression, range: range)
+            
+            if let `newRange` = newRange {
+                ranges.append(newRange)
+                range = Range<String.Index>(uncheckedBounds: (lower: newRange.upperBound, upper: text.endIndex))
+            } else {
+                range = nil
+            }
+        }
+        
+        var matches = [String]()
+        
+        ranges.forEach {
+            matches.append(String(text.substring(with: $0)))
+        }
+        
+        return matches
+    }
+    
     /// Replaces group matching regex with a replacement
     ///
     /// - Parameters:
