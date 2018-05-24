@@ -53,12 +53,14 @@ public class Bob {
     }
     
     
-    /// Registers a command so it becomes available for usage
+    /// Registers commands so they become available for usage
     ///
-    /// - Parameter command: Command to register
+    /// - Parameter commands: Commands to register
     /// - Throws: Throws an error if a command with the same name is already registered
-    public func register(_ command: Command) throws {
-        try self.factory.register(command)
+    public func register(_ commands: Command...) throws {
+        for command in commands {
+            try self.factory.register(command)
+        }
     }
     
     
