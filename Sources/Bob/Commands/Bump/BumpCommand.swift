@@ -28,7 +28,6 @@ public class BumpCommand {
     }
     
     fileprivate let gitHub: GitHub
-    fileprivate let defaultBranch: BranchName
     fileprivate let plistPaths: [String]
     fileprivate let message: String
     fileprivate let author: Author
@@ -36,13 +35,11 @@ public class BumpCommand {
     ///
     /// - Parameters:
     ///   - config: Configuration to use to connect to github
-    ///   - defaultBranch: Default branch
     ///   - plistPaths: Paths to .plist files to update. Path relative from the root of the repository
     ///   - author: Commit author. Shows up in GitHub
     ///   - messageFormat: Format for the commit message. `<version>` will be replaced with the version string
-    public init(gitHub: GitHub, defaultBranch: BranchName, plistPaths: [String], author: Author, message: String = "[General] Aligns version to <version>") {
+    public init(gitHub: GitHub, plistPaths: [String], author: Author, message: String = "[General] Aligns version to <version>") {
         self.gitHub = gitHub
-        self.defaultBranch = defaultBranch
         self.plistPaths = plistPaths
         self.message = message
         self.author = author
@@ -56,7 +53,7 @@ extension BumpCommand: Command {
     }
     
     public var usage: String {
-        return "Bump up build number by typing `bump`. Specify a branch by typing `\(Constants.branchSpecifier) {branch}`, defaults to `" + self.defaultBranch.name + "`."
+        return "Bump up build number by typing `bump`. Specify a branch by typing `\(Constants.branchSpecifier) {branch}`."
     }
     
     public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
@@ -66,13 +63,15 @@ extension BumpCommand: Command {
         
         var params = parameters
         
-        var branch: BranchName = self.defaultBranch
+        var specifiedBranch: BranchName?
         if let branchSpecifierIndex = params.index(where: { $0 == Constants.branchSpecifier }) {
             guard params.count > branchSpecifierIndex + 1 else { throw "Branch name not specified after `\(Constants.branchSpecifier)`" }
-            branch = BranchName(params[branchSpecifierIndex + 1])
+            specifiedBranch = BranchName(params[branchSpecifierIndex + 1])
             params.remove(at: branchSpecifierIndex + 1)
             params.remove(at: branchSpecifierIndex)
         }
+        
+        guard let branch = specifiedBranch else { throw "Please specify a branch" }
         
         sender.send("One sec...")
         let versionFiles = try self.gitHub.currentState(on: branch).items.filter { $0.path == plistPaths[0] }
