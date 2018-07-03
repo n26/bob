@@ -39,7 +39,7 @@ public class AlignVersionCommand {
     ///   - plistPaths: Paths to .plist files to update. Path relative from the root of the repository
     ///   - author: Commit author. Shows up in GitHub
     ///   - messageFormat: Format for the commit message. `<version>` will be replaced with the version string
-    public init(gitHub: GitHub, defaultBranch: BranchName, plistPaths: [String], author: Author, messageFormat: String = "[General] Aligns version to <version>") {
+    public init(gitHub: GitHub, plistPaths: [String], author: Author, messageFormat: String = "[General] Aligns version to <version>") {
         self.gitHub = gitHub
         self.plistPaths = plistPaths
         self.messageFormat = messageFormat
