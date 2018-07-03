@@ -29,7 +29,6 @@ public class AlignVersionCommand {
     }
     
     fileprivate let gitHub: GitHub
-    fileprivate let defaultBranch: BranchName
     fileprivate let plistPaths: [String]
     fileprivate let messageFormat: String
     fileprivate let author: Author
@@ -37,13 +36,11 @@ public class AlignVersionCommand {
     ///
     /// - Parameters:
     ///   - config: Configuration to use to connect to github
-    ///   - defaultBranch: Default branch
     ///   - plistPaths: Paths to .plist files to update. Path relative from the root of the repository
     ///   - author: Commit author. Shows up in GitHub
     ///   - messageFormat: Format for the commit message. `<version>` will be replaced with the version string
     public init(gitHub: GitHub, defaultBranch: BranchName, plistPaths: [String], author: Author, messageFormat: String = "[General] Aligns version to <version>") {
         self.gitHub = gitHub
-        self.defaultBranch = defaultBranch
         self.plistPaths = plistPaths
         self.messageFormat = messageFormat
         self.author = author
@@ -59,7 +56,7 @@ extension AlignVersionCommand: Command {
     }
     
     public var usage: String {
-        return "Change version and build number by typing `align {version} {build number}`. Build number defaults to `\(Constants.defaultBuildNumber)` if not specified. Specify a branch by typing `\(Constants.branchSpecifier) {branch}`, defaults to `" + self.defaultBranch.name + "`"
+        return "Change version and build number by typing `align {version} {build number}`. Build number defaults to `\(Constants.defaultBuildNumber)` if not specified. Specify a branch by typing `\(Constants.branchSpecifier) {branch}`."
     }
     
     public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
@@ -69,14 +66,15 @@ extension AlignVersionCommand: Command {
         
         var params = parameters
         
-        var branch: BranchName = self.defaultBranch
+        var specifiedBranch: BranchName?
         if let branchSpecifierIndex = params.index(where: { $0 == Constants.branchSpecifier }) {
             guard params.count > branchSpecifierIndex + 1 else { throw "Branch name not specified after `\(Constants.branchSpecifier)`" }
-            branch = BranchName(params[branchSpecifierIndex + 1])
+            specifiedBranch = BranchName(params[branchSpecifierIndex + 1])
             params.remove(at: branchSpecifierIndex + 1)
             params.remove(at: branchSpecifierIndex)
         }
         
+        guard let branch = specifiedBranch else { throw "Please specify a branch" }
         guard params.count > 0 else { throw "Please specify a `version` parameter. See `\(self.name) usage` for instructions on how to use this command" }
         
         let version = params[0]
