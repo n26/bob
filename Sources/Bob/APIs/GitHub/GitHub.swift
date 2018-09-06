@@ -136,7 +136,7 @@ public class GitHub {
     }
     
     public func existingBranches() throws -> [Branch] {
-        let uri = self.uri(at: "/branches")
+        let uri = self.uri(at: "/branches?per_page=100")
         let json = try self.resource(at: uri)
         
         guard let array = json.array else { throw "Expected an array from `\(uri)`" }
