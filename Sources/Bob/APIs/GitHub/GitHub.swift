@@ -81,6 +81,29 @@ public struct Commit {
     }
 }
 
+public enum GitContent {
+    case unrecognised
+    case file(name: String)
+    case directory(name: String)
+    case symlink(name: String, targetPath: String)
+    case submodule(name: String, url: URL)
+    
+    public var name: String {
+        switch self {
+        case .unrecognised:
+            return "<unknown>"
+        case .file(let name):
+            return name
+        case .directory(let name):
+            return name
+        case .symlink(let name,_):
+            return name
+        case .submodule(let name,_):
+            return name
+        }
+    }
+}
+
 /// Used for communicating with the GitHub api
 public class GitHub {
     
@@ -143,7 +166,7 @@ public class GitHub {
         
         return try array.map({
             guard let name = $0.object?["name"]?.string else {
-                throw "Expected `branch` object to contain a `name` peoperty in the response from `\(uri)`"
+                throw "Expected `branch` object to contain a `name` property in the response from `\(uri)`"
             }
             return Branch(name: name)
         })
@@ -287,4 +310,34 @@ public class GitHub {
         _ = try self.perform(request)
     }
     
+    public func directoryContents(at path: String, on branch: BranchName) throws -> [GitContent] {
+        let uri = self.uri(at: "/contents/\(path)?ref=" + branch.name)
+        let json = try self.resource(at: uri)
+        
+        guard let array = json.array else { throw "Error: Expected an array from \(uri)" }
+        
+        return try array.map {
+            guard let name = $0.object?["name"]?.string else { throw "Missing or invalid `name` field in directory contents of `\(uri)`." }
+            guard let type = $0.object?["type"]?.string else { throw "Missing or invalid `type` field in directory contents of `\(uri)`." }
+            
+            switch type {
+            case "file":
+                return .file(name: name)
+            case "dir":
+                return .directory(name: name)
+            case "symlink":
+                guard let targetPath = $0.object?["targetPath"]?.string else { throw "Missing or invalid `targetPath` field in directory contents of `\(uri)`." }
+                return .symlink(name: name, targetPath: targetPath)
+            case "submodule":
+                guard let urlString = $0.object?["submodule_git_url"]?.string,
+                    let url = URL(string: urlString) else {
+                        throw "Missing or invalid `submodule_git_url` field in directory contents of `\(uri)`."
+                }
+                return .submodule(name: name, url: url)
+            default:
+                return .unrecognised
+            }
+
+        }
+    }
 }
