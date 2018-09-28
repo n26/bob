@@ -47,9 +47,31 @@ public struct TreeItem {
 public struct Author {
     public let name: String
     public let email: String
-    public init(name: String, email: String) {
+    public let date: String
+    public init(name: String, email: String, date: String? = nil) {
         self.name = name
         self.email = email
+        
+        if let date = date {
+            self.date = date
+        } else {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+            dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)!
+            self.date = dateFormatter.string(from: Date()).appending("Z")
+        }
+    }
+
+    private let serverFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
+    
+    public func dateValue() throws -> Date {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = serverFormat
+        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)!
+        guard let dateValue = dateFormatter.date(from: date) else {
+            throw "Error: Author date does not match format: `\(serverFormat)`"
+        }
+        return dateValue
     }
 }
 
@@ -74,10 +96,17 @@ public struct BranchName {
 
 public struct Commit {
     public let sha: String
+    public let url: String
     public let message: String
-    public init(sha: String, message: String) {
+    public let author: Author
+    public let committer: Author
+    
+    public init(sha: String, url: String, message: String, author: Author, committer: Author) {
         self.sha = sha
+        self.url = url
         self.message = message
+        self.author = author
+        self.committer = committer
     }
 }
 
@@ -183,17 +212,43 @@ public class GitHub {
         return commitSHA
     }
     
-    public func commits(after sha: String, page: Int, perPage: Int) throws -> [Commit] {
-        let uri = self.uri(at: "/commits?sha=" + sha + "&page=" + String(page) + "&per_page=" + String(perPage))
+    /// Returns a list of commits in reverse chronological order
+    ///
+    /// - Parameters:
+    ///   - sha: Starting commit
+    ///   - page: Index of the requested page
+    ///   - perPage: Number of commits per page
+    ///   - path: Directory within repository (optional). Only commits with files touched within path will be returned
+    /// - Returns: Commits after sha in reverse chronological order (with files touched below path, when specified)
+    /// - Throws: When expected properties are missing in API response
+    public func commits(after sha: String, page: Int, perPage: Int, path: String? = nil) throws -> [Commit] {
+        let pathQuery: String
+        if let path = path {
+            pathQuery = "&path=" + path
+        } else {
+            pathQuery = ""
+        }
+        let uri = self.uri(at: "/commits?sha=" + sha + "&page=" + String(page) + "&per_page=" + String(perPage) + pathQuery)
         let json = try self.resource(at: uri)
         
         guard let array = json.array else { throw "Error: Expected an array from \(uri)" }
         
         return try array.map({
-            guard let sha = $0.object?["sha"]?.string else { throw "Missin `sha` property in \(uri)" }
+            guard let sha = $0.object?["sha"]?.string else { throw "Missing `sha` property in \(uri)" }
+            guard let url = $0.object?["html_url"]?.string else { throw "Expected `html_url` in dictionary" }
             guard let commit = $0.object?["commit"]?.object else { throw "Expected `commit` dictionary" }
             guard let message = commit["message"]?.string else { throw "Expected `message` in `commit` dictionary" }
-            return Commit(sha: sha, message: message)
+            guard let authorName = commit["author"]?["name"]?.string else { throw "Expected `author.name` in `commit` dictionary"}
+            guard let authorEmail = commit["author"]?["email"]?.string else { throw "Expected `author.email` in `commit` dictionary"}
+            guard let authorDate = commit["author"]?["date"]?.string else { throw "Expected `author.date` in `commit` dictionary"}
+            guard let committerName = commit["committer"]?["name"]?.string else { throw "Expected `committer.name` in `commit` dictionary"}
+            guard let committerEmail = commit["committer"]?["email"]?.string else { throw "Expected `committer.email` in `commit` dictionary"}
+            guard let committerDate = commit["committer"]?["date"]?.string else { throw "Expected `committer.date` in `commit` dictionary"}
+            return Commit(sha: sha,
+                          url: url,
+                          message: message,
+                          author: Author(name: authorName, email: authorEmail, date: authorDate),
+                          committer: Author(name: committerName, email: committerEmail, date: committerDate))
         })
     }
     
@@ -277,15 +332,10 @@ public class GitHub {
     public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> String {
         let uri = self.uri(at: "/git/commits")
         
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)!
-        let date = dateFormatter.string(from: Date()).appending("Z")
-        
         let author = try JSON(node: [
             "name": author.name,
             "email": author.email,
-            "date": date
+            "date": author.date
         ])
         let parameters = try JSON(node: [
             "message": message,
