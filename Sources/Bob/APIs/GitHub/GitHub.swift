@@ -112,7 +112,7 @@ public struct Commit {
 
 public enum GitContent {
     case unrecognised
-    case file(name: String)
+    case file(name: String, data: Data?)
     case directory(name: String)
     case symlink(name: String, targetPath: String)
     case submodule(name: String, url: URL)
@@ -121,7 +121,7 @@ public enum GitContent {
         switch self {
         case .unrecognised:
             return "<unknown>"
-        case .file(let name):
+        case .file(let name, _):
             return name
         case .directory(let name):
             return name
@@ -372,7 +372,7 @@ public class GitHub {
             
             switch type {
             case "file":
-                return .file(name: name)
+                return .file(name: name, data: nil)
             case "dir":
                 return .directory(name: name)
             case "symlink":
@@ -390,4 +390,22 @@ public class GitHub {
 
         }
     }
+    
+    public func fileContents(with path: String, on branch: BranchName) throws -> GitContent {
+        let uri = self.uri(at: "/contents/\(path)?ref=" + branch.name)
+        let json = try self.resource(at: uri)
+        
+            guard let name = json.object?["name"]?.string else { throw "Missing or invalid `name` field in directory contents of `\(uri)`." }
+            guard let type = json.object?["type"]?.string else { throw "Missing or invalid `type` field in directory contents of `\(uri)`." }
+            
+            switch type {
+            case "file":
+                guard let content = json.object?["content"]?.string else { throw "Missing or invalid `content` field in directory contents of `\(uri)`."}
+                guard let data = Data(base64Encoded: content, options: .ignoreUnknownCharacters) else { throw "Could not decode base64 encoded `content` field from `\(uri)`."}
+                return .file(name: name, data:data)
+            default:
+                throw "Unexpected file type at path: `\(uri)`."
+            }
+    }
+
 }
