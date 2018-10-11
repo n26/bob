@@ -334,8 +334,7 @@ public class GitHub {
         
         let author = try JSON(node: [
             "name": author.name,
-            "email": author.email,
-            "date": author.date
+            "email": author.email
         ])
         let parameters = try JSON(node: [
             "message": message,
