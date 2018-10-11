@@ -332,10 +332,15 @@ public class GitHub {
     public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> String {
         let uri = self.uri(at: "/git/commits")
         
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)!
+        let date = dateFormatter.string(from: Date()).appending("Z")
+        
         let author = try JSON(node: [
             "name": author.name,
             "email": author.email,
-            "date": author.date
+            "date": date
         ])
         let parameters = try JSON(node: [
             "message": message,
