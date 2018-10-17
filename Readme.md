@@ -90,7 +90,7 @@ import PackageDescription
 let package = Package(
     name: "BobTheBuilder",
     dependencies: [
-        .Package(url: "https://github.com/N26-OpenSource/bob.git", majorVersion: 0)
+        .Package(url: "https://github.com/n26/bob", majorVersion: 1)
     ]
 )
 ```
