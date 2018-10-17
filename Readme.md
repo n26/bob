@@ -110,7 +110,9 @@ Change the `Sources/App/main.swift` file to:
 import Bob
 
 let config = Bob.Configuration(slackToken: "your-slack-token")
-let bob = Bob(config: config)
+
+let drop = try Droplet()
+let bob = Bob(config: config, droplet: drop)
 
 try bob.start()
 ```
