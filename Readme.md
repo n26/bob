@@ -80,10 +80,11 @@ Bob can be set up just as any other Swift Package, but since it relies on [Vapor
 Once you have the toolbox setup, you can start by creating a new project:<br>
 
 ```bash
-vapor new BobTheBuilder
+vapor new BobTheBuilder --template=JanC/bob-template
 cd BobTheBuilder
 ```
-After the template is cloned, change the `Package.swift` file to: <br>
+
+After the template is cloned, the `Package.swift` should contain: <br>
 
 ```swift
 // swift-tools-version:4.0
@@ -95,32 +96,42 @@ let package = Package(
         .package(url: "https://github.com/n26/bob", from: "1.0.0"),
     ],
     targets: [
-        .target(name: "Run", dependencies: ["Bob"])
+        // The Commands target is the place to add any new custom commands
+        // When creating new commands, make sure that their Target Membership is set to `BobCustomCommands` and that they are public
+        .target(name: "BobCustomCommands", dependencies: ["Bob"]),
+        .target(name: "Run", dependencies: ["BobCustomCommands"])
+        
+        // If you don't plan to implement any custom commands, you can have only one target
+        // .target(name: "Run", dependencies: ["Bob"])
     ]
 )
-```
-You can delete the unused template files by running:
-```bash
-rm -rf Sources/App
+
 ```
 
-All of your custom code will reside in the `Sources/Run` folder.<br>
+All of your custom code will reside in the `Sources/BobCustomCommands` folder.<br>
+
 Create an Xcode project by running
 ```bash
 vapor xcode
 ```
-Change the `Sources/Run/main.swift` file to:
+
+Open the `Sources/Run/main.swift` file configure the built-in commands or add yours. The minimal `main.swift` for starting Bob is 
+
 ```swift
+import Vapor
 import Bob
 
+// https://api.slack.com/apps
 let config = Bob.Configuration(slackToken: "your-slack-token")
 
 let drop = try Droplet()
 let bob = Bob(config: config, droplet: drop)
 
 try bob.start()
+
 ```
-and you're good to go. Select the `App` scheme and run it. You can now send messages to `Bob` via Slack, and it will respond.
+
+and you're good to go. Select the `Run` scheme and run it. You can now send messages to `Bob` via Slack, and it will respond.
 
 ### Using the TravisCI API
 In order to use commands that communicate with the TravisCI API, you will need to provide a configuration. The configuration consists of
