@@ -85,6 +85,7 @@ cd BobTheBuilder
 ```
 After the template is cloned, change the `Package.swift` file to: <br>
 ```swift
+// swift-tools-version:3.1
 import PackageDescription
 
 let package = Package(
