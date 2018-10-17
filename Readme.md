@@ -46,7 +46,7 @@ let plistPaths: [String] = [
     "siriKit/Info.plist",
     "siriKitUI/Info.plist"
 ]
-let alignCommand = AlignVersionCommand(gitHub: gitHub, defaultBranch: "Develop", plistPaths: plistPaths, author: author)
+let alignCommand = AlignVersionCommand(gitHub: gitHub, plistPaths: plistPaths, author: author)
 try bob.register(alignCommand)
 ```
 would register a command that can be invoked by typing `align 3.0 4`. Bob would then create a commit on GitHub by changing the 3 specified files.
@@ -60,7 +60,7 @@ let plistPaths: [String] = [
     "siriKit/Info.plist",
     "siriKitUI/Info.plist"
 ]
-let bumpCommand = BumpCommand(gitHub: gitHub, defaultBranch: "Develop", plistPaths: plistPaths, author: author)
+let bumpCommand = BumpCommand(gitHub: gitHub, plistPaths: plistPaths, author: author)
 try bob.register(bumpCommand)
 ```
 would register a command that can be invoked by typing `bump`. Bob would then create a commit on GitHub by changing the 3 specified files.
