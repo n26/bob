@@ -84,28 +84,32 @@ vapor new BobTheBuilder
 cd BobTheBuilder
 ```
 After the template is cloned, change the `Package.swift` file to: <br>
+
 ```swift
-// swift-tools-version:3.1
+// swift-tools-version:4.0
 import PackageDescription
 
 let package = Package(
     name: "BobTheBuilder",
     dependencies: [
-        .Package(url: "https://github.com/n26/bob", majorVersion: 1)
+        .package(url: "https://github.com/n26/bob", from: "1.0.0"),
+    ],
+    targets: [
+        .target(name: "Run", dependencies: ["Bob"])
     ]
 )
 ```
 You can delete the unused template files by running:
 ```bash
-rm -rf Sources/App/Controllers
-rm -rf Sources/App/Models
+rm -rf Sources/App
 ```
-All of your custom code will reside in the `Sources/App` folder.<br>
+
+All of your custom code will reside in the `Sources/Run` folder.<br>
 Create an Xcode project by running
 ```bash
 vapor xcode
 ```
-Change the `Sources/App/main.swift` file to:
+Change the `Sources/Run/main.swift` file to:
 ```swift
 import Bob
 
