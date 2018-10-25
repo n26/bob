@@ -80,7 +80,7 @@ Bob can be set up just as any other Swift Package, but since it relies on [Vapor
 Once you have the toolbox setup, you can start by creating a new project:<br>
 
 ```bash
-vapor new BobTheBuilder --template=JanC/bob-template
+vapor new BobTheBuilder --template=n26/bob-vapor-template
 cd BobTheBuilder
 ```
 
