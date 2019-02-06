@@ -106,12 +106,18 @@ extension BumpCommand: Command {
             return
         }
         
-        guard let numericBuildNumber = Int(versionAndBuildNumber.1) else {
+        let newBuildNumber: String
+        if let numericBuildNumber = Int(versionAndBuildNumber.1) {
+            newBuildNumber = String(numericBuildNumber + 1)
+        } else if let numericBuildString = RegexMatcher(text: versionAndBuildNumber.1).matches(stringMatching: "[0-9]{1,}$").last,
+            let numericBuildNumber = Int(numericBuildString) {
+            let prefix = versionAndBuildNumber.1.dropLast(numericBuildString.count)
+            newBuildNumber = prefix + String(numericBuildNumber + 1)
+        } else {
             sender.send("Could not bump up build number because it's not numeric. Current value is *\(versionAndBuildNumber.1)*.")
             return
         }
-        
-        let newBuildNumber = String(numericBuildNumber + 1)
+
         let align = VersionUpdater(plistPaths: plistPaths, version: versionAndBuildNumber.0, buildNumber: newBuildNumber)
         
         let versionString = "\(versionAndBuildNumber.0) (\(newBuildNumber))"
