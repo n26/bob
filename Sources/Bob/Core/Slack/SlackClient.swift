@@ -69,8 +69,8 @@ class SlackClient {
                 
                 onMessage(text, sender)
             }
-            
-            socket.onClose = { _ in
+
+            socket.onClose = { _, _, _, _ in
                 print("\n[CLOSED]\n")
             }
         }
