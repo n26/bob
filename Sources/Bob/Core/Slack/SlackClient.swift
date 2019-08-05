@@ -20,62 +20,58 @@
 import Foundation
 import Vapor
 import HTTP
-import TLS
-import Transport
 
-extension ClientFactoryProtocol {
-    func loadRealtimeApi(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws -> HTTP.Response {
-        let headers: [HeaderKey: String] = ["Accept": "application/json; charset=utf-8"]
-        let query: [String: NodeRepresentable] = [
-            "token": token,
-            "simple_latest": simpleLatest ? 1 : 0,
-            "no_unreads": noUnreads ? 1 : 0
+extension Client {
+    func loadRealtimeApi(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws ->  EventLoopFuture<Response> {
+        let headers = HTTPHeaders([(HTTPHeaderName.accept.description, "application/json; charset=utf-8")])
+
+        var components = URLComponents(url: URL(string: "https://slack.com/api/rtm.start")!, resolvingAgainstBaseURL: false)!
+        components.queryItems = [
+            URLQueryItem(name: "token", value: token),
+            URLQueryItem(name: "simple_latest", value: simpleLatest ? "1" : "0"),
+            URLQueryItem(name: "no_unreads", value: noUnreads ? "1" : "0")
         ]
-        return try self.get(
-            "https://slack.com/api/rtm.start",
-            query: query,
-            headers)
+
+        return get(components.url!, headers: headers, beforeSend: { _ in })
+
     }
 }
 
 class SlackClient {
 
     private let token: String
-    private let droplet: Droplet
-    init(token: String, droplet: Droplet) {
+    private let app: Application
+    init(token: String, app: Application) {
         self.token = token
-        self.droplet = droplet
+        self.app = app
     }
     
     func connect(onMessage: @escaping (_ message: String, _ sender: MessageSender) -> Void) throws {
-        
-        let rtmResponse = try self.droplet.client.loadRealtimeApi(token: self.token)
-        guard let webSocketURL = rtmResponse.json?["url"]?.string else { throw "Unable to retrieve `url` from slack. Reason \(rtmResponse.status.reasonPhrase). Raw response \(rtmResponse.data)" }
-        
-        try WebSocketFactory.shared.connect(to: webSocketURL) { (socket) in
-            print("Connected to \(webSocketURL)")
-            
-            socket.onText = { ws, text in
+        print("Starting Slack connection")
+
+
+        let response = try app.client().loadRealtimeApi(token: token).wait()
+        let slackResponse = try response.content.decode(SlackStartResponse.self).wait()
+
+        let _ = try app.client().webSocket(slackResponse.url).flatMap { ws -> Future<Void> in
+
+            ws.onText  { ws, text in
                 print("[event] - \(text)")
-                
-                let event = try JSON(bytes: text.utf8.array)
-                
+
                 guard
-                    let channel = event["channel"]?.string,
-                    let text = event["text"]?.string
-                    else { return }
-                
-                let sender = SlackMessageSender(socket: socket, channel: channel)
-                
+                    let data = text.data(using: .utf8),
+                    let event = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+                    let channel = event?["channel"] as? String,
+                    let text = event?["text"] as? String else {
+                    return
+                }
+
+                let sender = SlackMessageSender(socket: ws, channel: channel)
                 onMessage(text, sender)
             }
 
-            socket.onClose = { _, _, _, _ in
-                print("\n[CLOSED]\n")
-            }
+            return ws.onClose
         }
-
-
     }
     
 }
