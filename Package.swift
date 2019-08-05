@@ -8,7 +8,7 @@ let package = Package(
         .library(name: "Bob", targets: ["Bob"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/vapor/vapor.git", from: "2.0.0"),
+        .package(url: "https://github.com/vapor/vapor.git", from: "3.0.0")
     ],
     targets: [
         .target(name: "Bob", dependencies: ["Vapor"]),
