@@ -1,0 +1,36 @@
+/*
+ * Copyright (c) 2019 N26 GmbH.
+ *
+ * This file is part of Bob.
+ *
+ * Bob is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * Bob is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with Bob.  If not, see <http://www.gnu.org/licenses/>.
+ */
+
+import Foundation
+import Vapor
+
+extension GitHub {
+
+    public func currentCommitSHA(on branch: BranchName) throws -> Future<String>  {
+        return try self.branch(branch).map(to: String.self) { branchDetail in
+            return branchDetail.commit.sha
+        }
+    }
+
+    public func treeSHA(forCommitSHA sha: SHA) throws -> Future<TreeSHA> {
+        return try self.gitCommit(sha: sha).map(to: SHA.self) { singleCommit   in
+            return singleCommit.tree.sha
+        }
+    }
+}
