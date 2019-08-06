@@ -23,7 +23,8 @@ import HTTP
 
 extension Client {
     func loadRealtimeApi(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws ->  EventLoopFuture<Response> {
-        let headers = HTTPHeaders([(HTTPHeaderName.accept.description, "application/json; charset=utf-8")])
+        var headers = HTTPHeaders()
+        headers.add(name: HTTPHeaderName.accept, value: "application/json; charset=utf-8")
 
         var components = URLComponents(url: URL(string: "https://slack.com/api/rtm.start")!, resolvingAgainstBaseURL: false)!
         components.queryItems = [

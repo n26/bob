@@ -20,36 +20,6 @@
 import Foundation
 import Vapor
 
-enum SlackMessageType: String, Encodable {
-    case message = "message"
-}
-
-struct SlackMessage: Encodable {
-
-    static var messageCounter: Int = 0
-    static var lastTimestamp: UInt64 = 0
-
-    let type = SlackMessageType.message
-    
-    let id: UInt64
-    let channel: String
-    let text: String
-
-    init(to channel: String, text: String) {
-
-
-        let timestamp = UInt64(floor(Date().timeIntervalSince1970))
-        if timestamp != SlackMessage.lastTimestamp {
-            SlackMessage.lastTimestamp = timestamp
-            SlackMessage.messageCounter = 0
-        }
-        
-        self.id = timestamp * 1000 + UInt64(SlackMessage.messageCounter)
-        SlackMessage.messageCounter += 1
-        self.channel = channel
-        self.text = text
-    }
-}
 
 extension WebSocket {
     func send<T: Encodable>(message: T) throws {

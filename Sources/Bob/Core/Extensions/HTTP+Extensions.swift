@@ -17,9 +17,13 @@
  * along with Bob.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import Foundation
+import NIOHTTP1
 
-
-struct SlackStartResponse: Decodable {
-    let url: URL
+extension HTTPResponseStatus {
+    var isSuccessfulRequest: Bool {
+        switch self {
+        case .ok, .created, .accepted, .nonAuthoritativeInformation, .noContent, .resetContent, .partialContent: return true
+        default: return false
+        }
+    }
 }
