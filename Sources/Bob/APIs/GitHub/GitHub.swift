@@ -21,16 +21,11 @@ import Foundation
 import Vapor
 import HTTP
 
-extension Status {
-    
-    var isSuccessfulRequest: Bool {
-        return self.statusCode >= 200 && self.statusCode < 300
-    }
-    
+public struct Tree: Content {
+    public let tree: [TreeItem]
 }
-
 /// Struct representin an item in the tree - files
-public struct TreeItem {
+public struct TreeItem: Content {
     public let path: String
     public let mode: String
     public let type: String
@@ -44,71 +39,81 @@ public struct TreeItem {
 }
 
 /// Struct representing an author
-public struct Author {
+public struct Author: Content {
     public let name: String
     public let email: String
-    public let date: String
-    public init(name: String, email: String, date: String? = nil) {
-        self.name = name
-        self.email = email
-        
-        if let date = date {
-            self.date = date
-        } else {
-            let dateFormatter = DateFormatter()
-            dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-            dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)!
-            self.date = dateFormatter.string(from: Date()).appending("Z")
-        }
-    }
-
-    private let serverFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
-    
-    public func dateValue() throws -> Date {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = serverFormat
-        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)!
-        guard let dateValue = dateFormatter.date(from: date) else {
-            throw "Error: Author date does not match format: `\(serverFormat)`"
-        }
-        return dateValue
-    }
+    public let date: Date
 }
 
 /// Struct representing a Branch.
 /// Only contains name since it is the only
 /// property used by current functionality
-public struct Branch {
-    public let name: String
-    public init(name: String) {
+public struct Branch: Content {
+
+    public let name: BranchName
+    public init(name: BranchName) {
         self.name = name
     }
 }
 
-/// Struct representing a branch name
-/// Used to enforce compiler safety
-public struct BranchName {
-    public let name: String
-    public init(_ name: String) {
-        self.name = name
-    }
+public struct BranchDetail: Content {
+
+    let name: BranchName
+    let commit: Commit
 }
 
-public struct Commit {
-    public let sha: String
-    public let url: String
-    public let message: String
-    public let author: Author
-    public let committer: Author
-    
-    public init(sha: String, url: String, message: String, author: Author, committer: Author) {
-        self.sha = sha
-        self.url = url
-        self.message = message
-        self.author = author
-        self.committer = committer
+public typealias BranchName = String
+public typealias SHA = String
+public typealias TreeSHA = String
+
+public struct Commit: Content {
+
+    public struct SingleCommit: Content {
+
+        public struct Tree: Content {
+            public let sha: SHA
+            public let url: URL
+        }
+
+        public let message: String
+        public let author: Author
+        public let committer: Author
+        public let tree: Tree
     }
+
+    public let sha: SHA
+    public let url: URL
+    public let commit: SingleCommit
+
+//    enum CodingKeys: String, CodingKey {
+//        case sha
+//        case url
+//        case commit
+//    }
+//    enum NestedCommitKeys: String, CodingKey {
+//        case author
+//        case comitter
+//        case message
+//    }
+//
+//    public init(from decoder: Decoder) throws {
+//        let container = try decoder.container(keyedBy: CodingKeys.self)
+//        sha = try container.decode(String.self, forKey: .sha)
+//        url = try container.decode(URL.self, forKey: .url)
+//
+//        let commitContainer = try container.nestedContainer(keyedBy: NestedCommitKeys.self, forKey: .commit)
+//        author = try commitContainer.decode(Author.self, forKey: .author)
+//        committer = try commitContainer.decode(Author.self, forKey: .author)
+//        message = try commitContainer.decode(String.self, forKey: .message)
+//    }
+//
+//    public func encode(to encoder: Encoder) throws {
+//        fatalError("not implemented")
+//    }
 }
+
+
+
 
 public enum GitContent {
     case unrecognised
@@ -133,6 +138,10 @@ public enum GitContent {
     }
 }
 
+enum GitHubError: Error {
+    case invalidParam(String)
+}
+
 /// Used for communicating with the GitHub api
 public class GitHub {
     
@@ -154,64 +163,33 @@ public class GitHub {
         }
     }
     
-    private let base64LoginData: String
+    private let authorization: BasicAuthorization
     private let repoUrl: String
-    private let drop: Droplet
-    public init(config: Configuration, droplet: Droplet) {
-        let authString = config.username + ":" + config.personalAccessToken
-        self.base64LoginData = authString.data(using: .utf8)!.base64EncodedString()
+    private let app: Application
+
+    public init(config: Configuration, app: Application) {
+        self.authorization = BasicAuthorization(username: config.username, password: config.personalAccessToken)
         self.repoUrl = config.repoUrl
-        self.drop = droplet
+        self.app = app
     }
     
     private func uri(at path: String) -> String {
         return self.repoUrl + path
     }
-    
-    private func perform(_ request: Request) throws -> JSON {
-        request.headers[HeaderKey("Authorization")] = "Basic " + self.base64LoginData
-        let response = try self.drop.client.respond(to: request)
-        if response.status.isSuccessfulRequest {
-            if let json = response.json {
-                return json
-            } else {
-                throw "Error: Expected JSON from `" + request.uri.description + "`"
-            }
-        } else {
-            throw "Error: `" + request.uri.description + "` - " + response.status.reasonPhrase
-        }
+
+    public func branches() throws -> Future<[Branch]> {
+        return try resource(at: uri(at: "/branches?per_page=100"))
     }
-    
-    private func resource(at uri: String) throws -> JSON {
-        let request = Request(method: .get, uri: uri)
-        return try self.perform(request)
+
+    public func branch(_ branch: BranchName) throws -> Future<BranchDetail> {
+        return try resource(at: uri(at: "/branches/" + branch))
     }
-    
-    public func existingBranches() throws -> [Branch] {
-        let uri = self.uri(at: "/branches?per_page=100")
-        let json = try self.resource(at: uri)
-        
-        guard let array = json.array else { throw "Expected an array from `\(uri)`" }
-        
-        return try array.map({
-            guard let name = $0.object?["name"]?.string else {
-                throw "Expected `branch` object to contain a `name` property in the response from `\(uri)`"
-            }
-            return Branch(name: name)
-        })
-        
+
+    public func gitCommit(sha: SHA) throws -> Future<Commit.SingleCommit> {
+        return try resource(at: uri(at: "git/commits/" + sha))
     }
-    
-    public func currentCommitSHA(on branch: BranchName) throws -> String  {
-        let uri = self.uri(at: "/branches/" + branch.name)
-        let json = try self.resource(at: uri)
-        
-        guard let commitSHA = json["commit"]?["sha"]?.string else {
-            throw "Missing or invalid `sha` field in the `commit` object of the response from `\(uri)`"
-        }
-        return commitSHA
-    }
-    
+
+
     /// Returns a list of commits in reverse chronological order
     ///
     /// - Parameters:
@@ -221,196 +199,196 @@ public class GitHub {
     ///   - path: Directory within repository (optional). Only commits with files touched within path will be returned
     /// - Returns: Commits after sha in reverse chronological order (with files touched below path, when specified)
     /// - Throws: When expected properties are missing in API response
-    public func commits(after sha: String, page: Int, perPage: Int, path: String? = nil) throws -> [Commit] {
-        let pathQuery: String
+    public func commits(after sha: String? = nil, page: Int? = nil, perPage: Int? = nil, path: String? = nil) throws -> Future<[Commit]> {
+
+        var components = URLComponents(string: "")!
+        var items = [URLQueryItem]()
+        components.path = "/commits"
+
+        if let sha = sha {
+            items.append(URLQueryItem(name: "sha", value: sha))
+        }
+        if let page = page {
+            items.append(URLQueryItem(name: "page", value: "\(page)"))
+        }
+
+        if let perPage = perPage {
+            items.append(URLQueryItem(name: "per_page", value: "\(perPage)"))
+        }
+
         if let path = path {
-            pathQuery = "&path=" + path
-        } else {
-            pathQuery = ""
+            items.append(URLQueryItem(name: "path", value: "\(path)"))
         }
-        let uri = self.uri(at: "/commits?sha=" + sha + "&page=" + String(page) + "&per_page=" + String(perPage) + pathQuery)
-        let json = try self.resource(at: uri)
-        
-        guard let array = json.array else { throw "Error: Expected an array from \(uri)" }
-        
-        return try array.map({
-            guard let sha = $0.object?["sha"]?.string else { throw "Missing `sha` property in \(uri)" }
-            guard let url = $0.object?["html_url"]?.string else { throw "Expected `html_url` in dictionary" }
-            guard let commit = $0.object?["commit"]?.object else { throw "Expected `commit` dictionary" }
-            guard let message = commit["message"]?.string else { throw "Expected `message` in `commit` dictionary" }
-            guard let authorName = commit["author"]?["name"]?.string else { throw "Expected `author.name` in `commit` dictionary"}
-            guard let authorEmail = commit["author"]?["email"]?.string else { throw "Expected `author.email` in `commit` dictionary"}
-            guard let authorDate = commit["author"]?["date"]?.string else { throw "Expected `author.date` in `commit` dictionary"}
-            guard let committerName = commit["committer"]?["name"]?.string else { throw "Expected `committer.name` in `commit` dictionary"}
-            guard let committerEmail = commit["committer"]?["email"]?.string else { throw "Expected `committer.email` in `commit` dictionary"}
-            guard let committerDate = commit["committer"]?["date"]?.string else { throw "Expected `committer.date` in `commit` dictionary"}
-            return Commit(sha: sha,
-                          url: url,
-                          message: message,
-                          author: Author(name: authorName, email: authorEmail, date: authorDate),
-                          committer: Author(name: committerName, email: committerEmail, date: committerDate))
-        })
+        components.queryItems = items
+        guard let url = components.url else { throw GitHubError.invalidParam("Could not create commit URL") }
+        let uri = self.uri(at: url.absoluteString)
+
+        return try resource(at: uri)
     }
-    
-    public func treeSHA(forCommitWith commitSHA: String) throws -> String {
-        let uri = self.uri(at: "/git/commits/" + commitSHA)
-        let json = try self.resource(at: uri)
-        
-        guard let treeSHA = json["tree"]?.object?["sha"]?.string else {
-            throw "Missing or invalid `sha` field in the `tree` object of the response from `\(uri)`"
-        }
-        return treeSHA
-    }
-    
-    public func treeItems(forTreeWith treeSHA: String) throws -> [TreeItem] {
+
+    public func trees(for treeSHA: TreeSHA) throws -> Future<Tree> {
         let uri = self.uri(at: "/git/trees/" + treeSHA + "?recursive=1")
-        let json = try self.resource(at: uri)
-        
-        guard let array = json["tree"]?.array else { throw "Missing or invalid `tree` field in response from `\(uri)`" }
-        
-        return try array.map({
-            guard let path = $0.object?["path"]?.string else { throw "Missing or invalid `path` field in one of the tree items in the response for `\(uri)`." }
-            guard let mode = $0.object?["mode"]?.string else { throw "Missing or invalid `mode` field in one of the tree items in the response for `\(uri)`." }
-            guard let type = $0.object?["type"]?.string else { throw "Missing or invalid `type` field in one of the tree items in the response for `\(uri)`." }
-            guard let sha = $0.object?["sha"]?.string else { throw "Missing or invalid `sha` field in one of the tree items in the response for `\(uri)`." }
-            return TreeItem(path: path, mode: mode, type: type, sha: sha)
+        return try self.resource(at: uri)
+    }
 
-        })
-    }
-    
-    public func content(forBlobWith blobSHA: String) throws -> String {
-        let uri = self.uri(at: "/git/blobs/" + blobSHA)
-        let json = try self.resource(at: uri)
-        
-        guard let content = json["content"]?.string else { throw "Missing or invalid `content` field in response from `\(uri)`" }
-        
-        /*
-         * Remove pretty formatting Github applies
-         */
-        let contentBase64 = content.replacingOccurrences(of: "\n", with: "", options: [])
-        
-        guard let contentData = Data(base64Encoded: contentBase64) else { throw "Invalid base64 string from `\(uri)`\n\(contentBase64)" }
-        guard let blob = String(data: contentData, encoding: .utf8) else { throw "Cannot create a string from base64 content retrieved from `\(uri)`\n\(contentBase64)" }
-        
-        return blob
+    // MARK: - Private
 
-    }
-    
-    public func newBlob(with content: String) throws -> String {
-        let uri = self.uri(at: "/git/blobs")
-        let parameters = try JSON(node: [
-            "content": content
-            ])
-        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
-        let json = try self.perform(request)
-        
-        guard let sha = json["sha"]?.string else { throw "Missing or invalid `sha` field in response from `\(uri)`" }
-        return sha
-    }
-    
-    public func newTree(withBaseSHA baseSHA: String, items: [TreeItem]) throws -> String {
-        let uri = self.uri(at: "/git/trees")
-        let tree = try items.map({
-            return try JSON(node: [
-                    "path": $0.path,
-                    "mode": $0.mode,
-                    "type": $0.type,
-                    "sha": $0.sha
-                ])
-        })
-        let parameters = try JSON(node: [
-            "base_tree": baseSHA,
-            "tree": JSON(node: tree)
-        ])
-        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
-        let json = try self.perform(request)
-        
-        guard let sha = json["sha"]?.string else { throw "Missing or invalid `sha` field in response from `\(uri)`" }
-        return sha
-    }
-    
-    public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> String {
-        let uri = self.uri(at: "/git/commits")
-        
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)!
-        let date = dateFormatter.string(from: Date()).appending("Z")
-        
-        let author = try JSON(node: [
-            "name": author.name,
-            "email": author.email,
-            "date": date
-        ])
-        let parameters = try JSON(node: [
-            "message": message,
-            "tree": treeSHA,
-            "parents": JSON(node: [parentSHA]),
-            "author": author
-        ])
-        
-        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
-        let json = try self.perform(request)
-        
-        guard let sha = json["sha"]?.string else { throw "Missing or invalid `sha` field in response from `\(uri)`" }
-        return sha
-    }
-    
-    public func updateRef(to commitSHA: String, on branch: BranchName) throws {
-        let uri = self.uri(at: "/git/refs/heads/" + branch.name)
-        let parameters = try JSON(node: [
-            "sha": commitSHA
-        ])
-        let request = Request(method: .patch, uri: uri, body: parameters.makeBody())
-        _ = try self.perform(request)
-    }
-    
-    public func directoryContents(at path: String, on branch: BranchName) throws -> [GitContent] {
-        let uri = self.uri(at: "/contents/\(path)?ref=" + branch.name)
-        let json = try self.resource(at: uri)
-        
-        guard let array = json.array else { throw "Error: Expected an array from \(uri)" }
-        
-        return try array.map {
-            guard let name = $0.object?["name"]?.string else { throw "Missing or invalid `name` field in directory contents of `\(uri)`." }
-            guard let type = $0.object?["type"]?.string else { throw "Missing or invalid `type` field in directory contents of `\(uri)`." }
-            
-            switch type {
-            case "file":
-                return .file(name: name, data: nil)
-            case "dir":
-                return .directory(name: name)
-            case "symlink":
-                guard let targetPath = $0.object?["targetPath"]?.string else { throw "Missing or invalid `targetPath` field in directory contents of `\(uri)`." }
-                return .symlink(name: name, targetPath: targetPath)
-            case "submodule":
-                guard let urlString = $0.object?["submodule_git_url"]?.string,
-                    let url = URL(string: urlString) else {
-                        throw "Missing or invalid `submodule_git_url` field in directory contents of `\(uri)`."
-                }
-                return .submodule(name: name, url: url)
-            default:
-                return .unrecognised
+    private func perform<T: Content>(_ request: HTTPRequest) throws -> Future<T> {
+        let req = Request(http: request, using: app)
+        req.http.headers.basicAuthorization = authorization
+
+        let futureResult = try app.client().send(req)
+        let featureContent = futureResult.flatMap { response -> EventLoopFuture<T> in
+            let futureDecode =  try response.content.decode(T.self)
+            futureDecode.whenFailure { error in
+                print("\(request.method.string) \(request.url): \(error)")
             }
-
+            return futureDecode
         }
+
+        return featureContent
     }
-    
-    public func fileContents(with path: String, on branch: BranchName) throws -> GitContent {
-        let uri = self.uri(at: "/contents/\(path)?ref=" + branch.name)
-        let json = try self.resource(at: uri)
-        
-            guard let name = json.object?["name"]?.string else { throw "Missing or invalid `name` field in directory contents of `\(uri)`." }
-            guard let type = json.object?["type"]?.string else { throw "Missing or invalid `type` field in directory contents of `\(uri)`." }
-            
-            switch type {
-            case "file":
-                guard let content = json.object?["content"]?.string else { throw "Missing or invalid `content` field in directory contents of `\(uri)`."}
-                guard let data = Data(base64Encoded: content, options: .ignoreUnknownCharacters) else { throw "Could not decode base64 encoded `content` field from `\(uri)`."}
-                return .file(name: name, data:data)
-            default:
-                throw "Unexpected file type at path: `\(uri)`."
-            }
+
+    private func resource<T: Content>(at uri: String) throws -> Future<T> {
+        let request = HTTPRequest(method: .GET, url: uri)
+        return try perform(request)
     }
+
+
+//
+//    public func content(forBlobWith blobSHA: String) throws -> String {
+//        let uri = self.uri(at: "/git/blobs/" + blobSHA)
+//        let json = try self.resource(at: uri)
+//
+//        guard let content = json["content"]?.string else { throw "Missing or invalid `content` field in response from `\(uri)`" }
+//
+//        /*
+//         * Remove pretty formatting Github applies
+//         */
+//        let contentBase64 = content.replacingOccurrences(of: "\n", with: "", options: [])
+//
+//        guard let contentData = Data(base64Encoded: contentBase64) else { throw "Invalid base64 string from `\(uri)`\n\(contentBase64)" }
+//        guard let blob = String(data: contentData, encoding: .utf8) else { throw "Cannot create a string from base64 content retrieved from `\(uri)`\n\(contentBase64)" }
+//
+//        return blob
+//
+//    }
+//
+//    public func newBlob(with content: String) throws -> String {
+//        let uri = self.uri(at: "/git/blobs")
+//        let parameters = try JSON(node: [
+//            "content": content
+//            ])
+//        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
+//        let json = try self.perform(request)
+//
+//        guard let sha = json["sha"]?.string else { throw "Missing or invalid `sha` field in response from `\(uri)`" }
+//        return sha
+//    }
+//
+//    public func newTree(withBaseSHA baseSHA: String, items: [TreeItem]) throws -> String {
+//        let uri = self.uri(at: "/git/trees")
+//        let tree = try items.map({
+//            return try JSON(node: [
+//                    "path": $0.path,
+//                    "mode": $0.mode,
+//                    "type": $0.type,
+//                    "sha": $0.sha
+//                ])
+//        })
+//        let parameters = try JSON(node: [
+//            "base_tree": baseSHA,
+//            "tree": JSON(node: tree)
+//        ])
+//        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
+//        let json = try self.perform(request)
+//
+//        guard let sha = json["sha"]?.string else { throw "Missing or invalid `sha` field in response from `\(uri)`" }
+//        return sha
+//    }
+//
+//    public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> String {
+//        let uri = self.uri(at: "/git/commits")
+//
+//        let dateFormatter = DateFormatter()
+//        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+//        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)!
+//        let date = dateFormatter.string(from: Date()).appending("Z")
+//
+//        let author = try JSON(node: [
+//            "name": author.name,
+//            "email": author.email,
+//            "date": date
+//        ])
+//        let parameters = try JSON(node: [
+//            "message": message,
+//            "tree": treeSHA,
+//            "parents": JSON(node: [parentSHA]),
+//            "author": author
+//        ])
+//
+//        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
+//        let json = try self.perform(request)
+//
+//        guard let sha = json["sha"]?.string else { throw "Missing or invalid `sha` field in response from `\(uri)`" }
+//        return sha
+//    }
+//
+//    public func updateRef(to commitSHA: String, on branch: BranchName) throws {
+//        let uri = self.uri(at: "/git/refs/heads/" + branch.name)
+//        let parameters = try JSON(node: [
+//            "sha": commitSHA
+//        ])
+//        let request = Request(method: .patch, uri: uri, body: parameters.makeBody())
+//        _ = try self.perform(request)
+//    }
+//
+//    public func directoryContents(at path: String, on branch: BranchName) throws -> [GitContent] {
+//        let uri = self.uri(at: "/contents/\(path)?ref=" + branch.name)
+//        let json = try self.resource(at: uri)
+//
+//        guard let array = json.array else { throw "Error: Expected an array from \(uri)" }
+//
+//        return try array.map {
+//            guard let name = $0.object?["name"]?.string else { throw "Missing or invalid `name` field in directory contents of `\(uri)`." }
+//            guard let type = $0.object?["type"]?.string else { throw "Missing or invalid `type` field in directory contents of `\(uri)`." }
+//
+//            switch type {
+//            case "file":
+//                return .file(name: name, data: nil)
+//            case "dir":
+//                return .directory(name: name)
+//            case "symlink":
+//                guard let targetPath = $0.object?["targetPath"]?.string else { throw "Missing or invalid `targetPath` field in directory contents of `\(uri)`." }
+//                return .symlink(name: name, targetPath: targetPath)
+//            case "submodule":
+//                guard let urlString = $0.object?["submodule_git_url"]?.string,
+//                    let url = URL(string: urlString) else {
+//                        throw "Missing or invalid `submodule_git_url` field in directory contents of `\(uri)`."
+//                }
+//                return .submodule(name: name, url: url)
+//            default:
+//                return .unrecognised
+//            }
+//
+//        }
+//    }
+//
+//    public func fileContents(with path: String, on branch: BranchName) throws -> GitContent {
+//        let uri = self.uri(at: "/contents/\(path)?ref=" + branch.name)
+//        let json = try self.resource(at: uri)
+//
+//            guard let name = json.object?["name"]?.string else { throw "Missing or invalid `name` field in directory contents of `\(uri)`." }
+//            guard let type = json.object?["type"]?.string else { throw "Missing or invalid `type` field in directory contents of `\(uri)`." }
+//
+//            switch type {
+//            case "file":
+//                guard let content = json.object?["content"]?.string else { throw "Missing or invalid `content` field in directory contents of `\(uri)`."}
+//                guard let data = Data(base64Encoded: content, options: .ignoreUnknownCharacters) else { throw "Could not decode base64 encoded `content` field from `\(uri)`."}
+//                return .file(name: name, data:data)
+//            default:
+//                throw "Unexpected file type at path: `\(uri)`."
+//            }
+//    }
 
 }
