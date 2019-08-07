@@ -21,99 +21,6 @@ import Foundation
 import Vapor
 import HTTP
 
-public struct Tree: Content {
-    public let tree: [TreeItem]
-}
-/// Struct representin an item in the tree - files
-public struct TreeItem: Content {
-    public let path: String
-    public let mode: String
-    public let type: String
-    public let sha: String
-    public init(path: String, mode: String, type: String, sha: String) {
-        self.path = path
-        self.mode = mode
-        self.type = type
-        self.sha = sha
-    }
-}
-
-/// Struct representing an author
-public struct Author: Content {
-    public let name: String
-    public let email: String
-    public let date: Date
-}
-
-/// Struct representing a Branch.
-/// Only contains name since it is the only
-/// property used by current functionality
-public struct Branch: Content {
-
-    public let name: BranchName
-    public init(name: BranchName) {
-        self.name = name
-    }
-}
-
-public struct BranchDetail: Content {
-
-    let name: BranchName
-    let commit: Commit
-}
-
-public typealias BranchName = String
-public typealias SHA = String
-public typealias TreeSHA = String
-
-public struct Commit: Content {
-
-    public struct SingleCommit: Content {
-
-        public struct Tree: Content {
-            public let sha: SHA
-            public let url: URL
-        }
-
-        public let message: String
-        public let author: Author
-        public let committer: Author
-        public let tree: Tree
-    }
-
-    public let sha: SHA
-    public let url: URL
-    public let commit: SingleCommit
-
-//    enum CodingKeys: String, CodingKey {
-//        case sha
-//        case url
-//        case commit
-//    }
-//    enum NestedCommitKeys: String, CodingKey {
-//        case author
-//        case comitter
-//        case message
-//    }
-//
-//    public init(from decoder: Decoder) throws {
-//        let container = try decoder.container(keyedBy: CodingKeys.self)
-//        sha = try container.decode(String.self, forKey: .sha)
-//        url = try container.decode(URL.self, forKey: .url)
-//
-//        let commitContainer = try container.nestedContainer(keyedBy: NestedCommitKeys.self, forKey: .commit)
-//        author = try commitContainer.decode(Author.self, forKey: .author)
-//        committer = try commitContainer.decode(Author.self, forKey: .author)
-//        message = try commitContainer.decode(String.self, forKey: .message)
-//    }
-//
-//    public func encode(to encoder: Encoder) throws {
-//        fatalError("not implemented")
-//    }
-}
-
-
-
 
 public enum GitContent {
     case unrecognised
@@ -177,15 +84,16 @@ public class GitHub {
         return self.repoUrl + path
     }
 
-    public func branches() throws -> Future<[Branch]> {
+    public func branches() throws -> Future<[GitAPI.Repos.Branch]> {
         return try resource(at: uri(at: "/branches?per_page=100"))
     }
 
-    public func branch(_ branch: BranchName) throws -> Future<BranchDetail> {
+    
+    public func branch(_ branch: GitAPI.Repos.Branch.BranchName) throws -> Future<GitAPI.Repos.BranchDetail> {
         return try resource(at: uri(at: "/branches/" + branch))
     }
 
-    public func gitCommit(sha: SHA) throws -> Future<Commit.SingleCommit> {
+    public func gitCommit(sha: GitAPI.Git.Commit.SHA) throws -> Future<GitAPI.Git.Commit> {
         return try resource(at: uri(at: "git/commits/" + sha))
     }
 
@@ -199,7 +107,7 @@ public class GitHub {
     ///   - path: Directory within repository (optional). Only commits with files touched within path will be returned
     /// - Returns: Commits after sha in reverse chronological order (with files touched below path, when specified)
     /// - Throws: When expected properties are missing in API response
-    public func commits(after sha: String? = nil, page: Int? = nil, perPage: Int? = nil, path: String? = nil) throws -> Future<[Commit]> {
+    public func commits(after sha: String? = nil, page: Int? = nil, perPage: Int? = nil, path: String? = nil) throws -> Future<[GitAPI.Repos.Commit]> {
 
         var components = URLComponents(string: "")!
         var items = [URLQueryItem]()
@@ -226,7 +134,7 @@ public class GitHub {
         return try resource(at: uri)
     }
 
-    public func trees(for treeSHA: TreeSHA) throws -> Future<Tree> {
+    public func trees(for treeSHA: GitAPI.Git.Tree.SHA) throws -> Future<GitAPI.Git.Tree> {
         let uri = self.uri(at: "/git/trees/" + treeSHA + "?recursive=1")
         return try self.resource(at: uri)
     }
