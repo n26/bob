@@ -37,6 +37,13 @@ extension GitHub {
         }
         return decoder
     }()
+
+    static let encoder: JSONEncoder = {
+        let encoder = JSONEncoder()
+        encoder.keyEncodingStrategy = .convertToSnakeCase
+        
+        return encoder
+    }()
     
     /// Struct representing an author
     public struct Author: Content {
@@ -88,7 +95,13 @@ extension GitHub {
 
         // https://developer.github.com/v3/git/blobs/#response
         public struct Blob: Content {
+            public typealias SHA = String
             public let content: Data
+            public let sha: SHA
+        }
+
+        public struct NewBlob: Content {
+            public let content: String
         }
     }
 

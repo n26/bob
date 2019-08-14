@@ -65,35 +65,23 @@ public class GitHub {
     // MARK: Repository APIs
 
     public func branches() throws -> Future<[GitHub.Repos.Branch]> {
-        return try resource(at: uri(at: "/branches?per_page=100"))
+        return try get(uri(at: "/branches?per_page=100"))
     }
 
     
     public func branch(_ branch: GitHub.Repos.Branch.BranchName) throws -> Future<GitHub.Repos.BranchDetail> {
-        return try resource(at: uri(at: "/branches/" + branch))
+        return try get(uri(at: "/branches/" + branch))
     }
 
     /// Lists the content of a directory
     public func contents(at path: String, on branch: GitHub.Repos.Branch.BranchName) throws -> Future<[GitHub.Repos.GitContent]> {
-        return try resource(at: uri(at: "/contents/\(path)?ref=" + branch))
+        return try get(uri(at: "/contents/\(path)?ref=" + branch))
     }
 
     /// Content of a single file
     public func content(at path: String, on branch: GitHub.Repos.Branch.BranchName) throws -> Future<GitHub.Repos.GitContent> {
-        return try resource(at: uri(at: "/contents/\(path)?ref=" + branch))
+        return try get(uri(at: "/contents/\(path)?ref=" + branch))
     }
-
-    // MARK: - Git APIs
-
-    public func gitCommit(sha: GitHub.Git.Commit.SHA) throws -> Future<GitHub.Git.Commit> {
-        return try resource(at: uri(at: "git/commits/" + sha))
-    }
-
-    public func gitBlob(sha: Git.TreeItem.SHA) throws -> Future<GitHub.Git.Blob> {
-        return try resource(at: uri(at: "/git/blobs/" + sha))
-    }
-
-
 
     /// Returns a list of commits in reverse chronological order
     ///
@@ -102,8 +90,6 @@ public class GitHub {
     ///   - page: Index of the requested page
     ///   - perPage: Number of commits per page
     ///   - path: Directory within repository (optional). Only commits with files touched within path will be returned
-    /// - Returns: Commits after sha in reverse chronological order (with files touched below path, when specified)
-    /// - Throws: When expected properties are missing in API response
     public func commits(after sha: String? = nil, page: Int? = nil, perPage: Int? = nil, path: String? = nil) throws -> Future<[GitHub.Repos.Commit]> {
 
         var components = URLComponents(string: "")!
@@ -128,12 +114,28 @@ public class GitHub {
         guard let url = components.url else { throw GitHubError.invalidParam("Could not create commit URL") }
         let uri = self.uri(at: url.absoluteString)
 
-        return try resource(at: uri)
+        return try get(uri)
     }
+
+    // MARK: - Git APIs
+
+    public func gitCommit(sha: GitHub.Git.Commit.SHA) throws -> Future<GitHub.Git.Commit> {
+        return try get(uri(at: "git/commits/" + sha))
+    }
+
+    public func gitBlob(sha: Git.TreeItem.SHA) throws -> Future<GitHub.Git.Blob> {
+        return try get(uri(at: "/git/blobs/" + sha))
+    }
+
+    public func newBlob(data: String) throws -> Future<GitHub.Git.Blob> {
+        let blob = GitHub.Git.NewBlob(content: data)
+        return try post(body: blob, to: uri(at: "/git/blobs/"))
+    }
+
 
     public func trees(for treeSHA: GitHub.Git.Tree.SHA) throws -> Future<GitHub.Git.Tree> {
         let uri = self.uri(at: "/git/trees/" + treeSHA + "?recursive=1")
-        return try self.resource(at: uri)
+        return try self.get(uri)
     }
 
     // MARK: - Private
@@ -154,25 +156,18 @@ public class GitHub {
         return featureContent
     }
 
-    private func resource<T: Content>(at uri: String, using decoder: JSONDecoder = GitHub.decoder) throws -> Future<T> {
+    private func get<T: Content>(_ uri: String, using decoder: JSONDecoder = GitHub.decoder) throws -> Future<T> {
         let request = HTTPRequest(method: .GET, url: uri)
         return try perform(request, using: decoder)
     }
 
+    private func post<Body: Content, T: Content>(body: Body, to uri: String, encoder: JSONEncoder = GitHub.encoder, using decoder: JSONDecoder = GitHub.decoder) throws -> Future<T> {
+        var request = HTTPRequest(method: .POST, url: uri)
+        let data  = try encoder.encode(body)
+        request.body = HTTPBody(data: data)
+        return try perform(request, using: decoder)
+    }
 
-
-//
-//    public func newBlob(with content: String) throws -> String {
-//        let uri = self.uri(at: "/git/blobs")
-//        let parameters = try JSON(node: [
-//            "content": content
-//            ])
-//        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
-//        let json = try self.perform(request)
-//
-//        guard let sha = json["sha"]?.string else { throw "Missing or invalid `sha` field in response from `\(uri)`" }
-//        return sha
-//    }
 //
 //    public func newTree(withBaseSHA baseSHA: String, items: [TreeItem]) throws -> String {
 //        let uri = self.uri(at: "/git/trees")
