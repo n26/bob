@@ -133,6 +133,15 @@ extension GitHub {
             }
         }
 
+        public struct Reference: Content {
+            let ref: String
+            let nodeId: String
+            let url: URL
+
+            public struct Patch: Content {
+                let sha: String
+            }
+        }
     }
 
     /// https://developer.github.com/v3/repos/

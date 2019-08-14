@@ -134,18 +134,22 @@ public class GitHub {
 
 
     public func trees(for treeSHA: GitHub.Git.Tree.SHA) throws -> Future<GitHub.Git.Tree> {
-        let uri = self.uri(at: "/git/trees/" + treeSHA + "?recursive=1")
-        return try self.get(uri)
+        return try self.get(uri(at: "/git/trees/" + treeSHA + "?recursive=1"))
     }
 
     public func newTree(tree: Tree.New) throws -> Future<Tree> {
         return try post(body: tree, to: uri(at: "/git/trees"))
     }
 
-        public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> Future<GitHub.Git.Commit> {
-            let body = GitCommit.New(message: message, tree: treeSHA, parents: [parentSHA], author: author)
-            return try post(body: body, to: uri(at: "/git/commits"))
-        }
+    public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> Future<GitHub.Git.Commit> {
+        let body = GitCommit.New(message: message, tree: treeSHA, parents: [parentSHA], author: author)
+        return try post(body: body, to: uri(at: "/git/commits"))
+    }
+
+    public func updateRef(to sha: GitHub.Git.Commit.SHA, on branch: GitHub.Repos.Branch.BranchName) throws -> Future<GitHub.Git.Reference> {
+        let body = GitHub.Git.Reference.Patch(sha: sha)
+        return try post(body: body, to: uri(at: "/git/refs/heads/" + branch), patch: true)
+    }
 
 
     // MARK: - Private
@@ -171,26 +175,10 @@ public class GitHub {
         return try perform(request, using: decoder)
     }
 
-    private func post<Body: Content, T: Content>(body: Body, to uri: String, encoder: JSONEncoder = GitHub.encoder, using decoder: JSONDecoder = GitHub.decoder) throws -> Future<T> {
-        var request = HTTPRequest(method: .POST, url: uri)
+    private func post<Body: Content, T: Content>(body: Body, to uri: String, encoder: JSONEncoder = GitHub.encoder, using decoder: JSONDecoder = GitHub.decoder, patch: Bool = false ) throws -> Future<T> {
+        var request = HTTPRequest(method: patch ? .POST : .PATCH, url: uri)
         let data  = try encoder.encode(body)
         request.body = HTTPBody(data: data)
         return try perform(request, using: decoder)
     }
-
-
-//
-
-//
-//    public func updateRef(to commitSHA: String, on branch: BranchName) throws {
-//        let uri = self.uri(at: "/git/refs/heads/" + branch.name)
-//        let parameters = try JSON(node: [
-//            "sha": commitSHA
-//        ])
-//        let request = Request(method: .patch, uri: uri, body: parameters.makeBody())
-//        _ = try self.perform(request)
-//    }
-//
-
-
 }
