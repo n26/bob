@@ -142,6 +142,11 @@ public class GitHub {
         return try post(body: tree, to: uri(at: "/git/trees"))
     }
 
+        public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> Future<GitHub.Git.Commit> {
+            let body = GitCommit.New(message: message, tree: treeSHA, parents: [parentSHA], author: author)
+            return try post(body: body, to: uri(at: "/git/commits"))
+        }
+
 
     // MARK: - Private
 
@@ -175,32 +180,7 @@ public class GitHub {
 
 
 //
-//    public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> String {
-//        let uri = self.uri(at: "/git/commits")
-//
-//        let dateFormatter = DateFormatter()
-//        dateFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
-//        dateFormatter.timeZone = TimeZone(secondsFromGMT: 0)!
-//        let date = dateFormatter.string(from: Date()).appending("Z")
-//
-//        let author = try JSON(node: [
-//            "name": author.name,
-//            "email": author.email,
-//            "date": date
-//        ])
-//        let parameters = try JSON(node: [
-//            "message": message,
-//            "tree": treeSHA,
-//            "parents": JSON(node: [parentSHA]),
-//            "author": author
-//        ])
-//
-//        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
-//        let json = try self.perform(request)
-//
-//        guard let sha = json["sha"]?.string else { throw "Missing or invalid `sha` field in response from `\(uri)`" }
-//        return sha
-//    }
+
 //
 //    public func updateRef(to commitSHA: String, on branch: BranchName) throws {
 //        let uri = self.uri(at: "/git/refs/heads/" + branch.name)

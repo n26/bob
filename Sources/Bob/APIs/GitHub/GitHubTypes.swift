@@ -20,11 +20,17 @@ import Vapor
 
 public typealias TreeItem = GitHub.Git.TreeItem
 public typealias Tree = GitHub.Git.Tree
+public typealias GitCommit = GitHub.Git.Commit
 public typealias BranchName = GitHub.Repos.Branch.BranchName
 public typealias Author = GitHub.Author
 
 extension GitHub {
 
+    static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        return formatter
+    }()
     static let decoder: JSONDecoder = {
         let decoder = JSONDecoder()
         decoder.keyDecodingStrategy = .convertFromSnakeCase
@@ -36,12 +42,15 @@ extension GitHub {
             }
             return data
         }
+
+        decoder.dateDecodingStrategy = .formatted(GitHub.dateFormatter)
         return decoder
     }()
 
     static let encoder: JSONEncoder = {
         let encoder = JSONEncoder()
         encoder.keyEncodingStrategy = .convertToSnakeCase
+        encoder.dateEncodingStrategy = .formatted(GitHub.dateFormatter)
         
         return encoder
     }()
@@ -51,6 +60,12 @@ extension GitHub {
         public let name: String
         public let email: String
         public let date: Date
+
+        public init(name: String, email: String, date: Date = Date()) {
+            self.name = name
+            self.email = email
+            self.date = date
+        }
     }
 
 
@@ -59,6 +74,13 @@ extension GitHub {
 
         public struct Commit: Content {
             public typealias SHA = String
+
+            public struct New: Content {
+                let message: String
+                let tree: Tree.SHA
+                let parents: [Commit.SHA]
+                let author: Author
+            }
 
             public struct Tree: Content {
                 public typealias SHA = String
@@ -110,6 +132,7 @@ extension GitHub {
                 public let content: String
             }
         }
+
     }
 
     /// https://developer.github.com/v3/repos/
