@@ -19,6 +19,7 @@
 import Vapor
 
 public typealias TreeItem = GitHub.Git.TreeItem
+public typealias Tree = GitHub.Git.Tree
 public typealias BranchName = GitHub.Repos.Branch.BranchName
 public typealias Author = GitHub.Author
 
@@ -76,6 +77,11 @@ extension GitHub {
             public typealias SHA = String
             
             public let tree: [TreeItem]
+
+            public struct New: Content {
+                let baseTree: SHA
+                public let tree: [TreeItem]
+            }
         }
         /// Struct representin an item in the tree - files
         public struct TreeItem: Content {
@@ -98,10 +104,11 @@ extension GitHub {
             public typealias SHA = String
             public let content: Data
             public let sha: SHA
-        }
 
-        public struct NewBlob: Content {
-            public let content: String
+
+            public struct New: Content {
+                public let content: String
+            }
         }
     }
 

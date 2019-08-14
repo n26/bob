@@ -128,7 +128,7 @@ public class GitHub {
     }
 
     public func newBlob(data: String) throws -> Future<GitHub.Git.Blob> {
-        let blob = GitHub.Git.NewBlob(content: data)
+        let blob = GitHub.Git.Blob.New(content: data)
         return try post(body: blob, to: uri(at: "/git/blobs/"))
     }
 
@@ -137,6 +137,11 @@ public class GitHub {
         let uri = self.uri(at: "/git/trees/" + treeSHA + "?recursive=1")
         return try self.get(uri)
     }
+
+    public func newTree(tree: Tree.New) throws -> Future<Tree> {
+        return try post(body: tree, to: uri(at: "/git/trees"))
+    }
+
 
     // MARK: - Private
 
@@ -168,27 +173,7 @@ public class GitHub {
         return try perform(request, using: decoder)
     }
 
-//
-//    public func newTree(withBaseSHA baseSHA: String, items: [TreeItem]) throws -> String {
-//        let uri = self.uri(at: "/git/trees")
-//        let tree = try items.map({
-//            return try JSON(node: [
-//                    "path": $0.path,
-//                    "mode": $0.mode,
-//                    "type": $0.type,
-//                    "sha": $0.sha
-//                ])
-//        })
-//        let parameters = try JSON(node: [
-//            "base_tree": baseSHA,
-//            "tree": JSON(node: tree)
-//        ])
-//        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
-//        let json = try self.perform(request)
-//
-//        guard let sha = json["sha"]?.string else { throw "Missing or invalid `sha` field in response from `\(uri)`" }
-//        return sha
-//    }
+
 //
 //    public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> String {
 //        let uri = self.uri(at: "/git/commits")
