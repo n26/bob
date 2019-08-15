@@ -43,9 +43,8 @@ public extension GitHub {
 
     public func assertBranchExists(_ branch: BranchName) throws -> Future<Void> {
         return try branchExists(branch).map { result  in
-            if result.branchExists {
-            } else {
-                throw GitHubError.invalidBranch
+            if !result.branchExists {
+                throw GitHubError.invalidBranch(name: branch)
             }
         }
     }

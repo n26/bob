@@ -23,7 +23,7 @@ import HTTP
 
 
 enum GitHubError: Error {
-    case invalidBranch
+    case invalidBranch(name: String)
     case invalidParam(String)
     case decoding(String)
 }
@@ -121,7 +121,7 @@ public class GitHub {
     // MARK: - Git APIs
 
     public func gitCommit(sha: GitHub.Git.Commit.SHA) throws -> Future<GitHub.Git.Commit> {
-        return try get(uri(at: "git/commits/" + sha))
+        return try get(uri(at: "/git/commits/" + sha))
     }
 
     public func gitBlob(sha: Git.TreeItem.SHA) throws -> Future<GitHub.Git.Blob> {
