@@ -21,6 +21,7 @@ import Vapor
 public typealias TreeItem = GitHub.Git.TreeItem
 public typealias Tree = GitHub.Git.Tree
 public typealias GitCommit = GitHub.Git.Commit
+public typealias Branch = GitHub.Repos.Branch
 public typealias BranchName = GitHub.Repos.Branch.BranchName
 public typealias Author = GitHub.Author
 

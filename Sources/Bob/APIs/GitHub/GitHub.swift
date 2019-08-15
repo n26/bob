@@ -23,6 +23,7 @@ import HTTP
 
 
 enum GitHubError: Error {
+    case invalidBranch
     case invalidParam(String)
     case decoding(String)
 }
