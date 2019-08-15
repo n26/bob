@@ -18,36 +18,35 @@
  */
 
 import Foundation
+import Vapor
+
 
 public extension GitHub {
-    
-    public func branchExists(_ branch: BranchName) throws -> (branchExists: Bool, possibleMatches: [Branch]) {
-        let branches = try self.existingBranches()
-        var branchExists = false
-        let possibleMatches = branches.filter({ (remoteBranch) -> Bool in
-            if remoteBranch.name == branch.name {
-                branchExists = true
-            } else {
-                let distance = remoteBranch.name.levenshtein(to: branch.name)
-                if Double(distance)/Double(branch.name.characters.count) < 0.25 {
-                    return true
-                }
+
+    public func branchExists(_ branch: BranchName) throws -> Future<(branchExists: Bool, possibleMatches: [Branch])>{
+        return try self.branches().map { branches -> (branchExists: Bool, possibleMatches: [Branch])  in
+            var branchExists = false
+            let possibleMatches = branches.filter { remoteBranch -> Bool in
+                    if remoteBranch.name == branch {
+                        branchExists = true
+                    } else {
+                        let distance = remoteBranch.name.levenshtein(to: branch)
+                        if Double(distance)/Double(branch.count) < 0.25 {
+                            return true
+                        }
+                    }
+                    return false
             }
-            return false
-        })
-        return (branchExists, possibleMatches)
-    }
-    
-    public func assertBranchExists(_ branch: BranchName) throws {
-        let data = try self.branchExists(branch)
-        if !data.branchExists {
-            var message = "Branch `\(branch.name)` doesn't exist."
-            if data.possibleMatches.count > 0 {
-                let branchesString = data.possibleMatches.reduce("") { $0 + "\n • " + $1.name }
-                message = message + " Did you mean one of these:" + branchesString
-            }
-            throw message
+            return (branchExists, possibleMatches)
         }
     }
-    
+
+    public func assertBranchExists(_ branch: BranchName) throws -> Future<Void> {
+        return try branchExists(branch).map { result  in
+            if result.branchExists {
+            } else {
+                throw GitHubError.invalidBranch
+            }
+        }
+    }
 }
