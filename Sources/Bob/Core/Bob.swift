@@ -44,7 +44,7 @@ public class Bob {
     /// Initializer
     ///
     /// - Parameter configuration: Configuration for setup
-    /// - Parameter droplet: Application
+    /// - Parameter app: Application
     public init(config: Configuration, app: Application) {
         self.slackClient = SlackClient(token: config.slackToken, app: app)
         self.factory = CommandFactory(commands: [HelloCommand(), VersionCommand()])
