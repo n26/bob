@@ -23,7 +23,7 @@ import Vapor
 
 extension GitHub {
 
-    public func currentCommitSHA(on branch: GitHub.Repos.Branch.BranchName) throws -> Future<String>  {
+    public func currentCommitSHA(on branch: GitHub.Repos.Branch.BranchName) throws -> Future<GitHub.Repos.Commit.SHA>  {
         return try self.branch(branch).map(to: String.self) { branchDetail in
             return branchDetail.commit.sha
         }

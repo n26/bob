@@ -53,6 +53,10 @@ public class GitHub {
     private let repoUrl: String
     private let app: Application
 
+    var worker: Worker {
+        return app
+    }
+
     public init(config: Configuration, app: Application) {
         self.authorization = BasicAuthorization(username: config.username, password: config.personalAccessToken)
         self.repoUrl = config.repoUrl
