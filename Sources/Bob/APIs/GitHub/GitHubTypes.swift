@@ -90,6 +90,7 @@ extension GitHub {
                 public let url: URL
             }
 
+            public let sha: SHA
             public let message: String
             public let author: Author
             public let committer: Author
@@ -98,7 +99,8 @@ extension GitHub {
 
         public struct Tree: Content {
             public typealias SHA = String
-            
+
+            public let sha: SHA
             public let tree: [TreeItem]
 
             public struct New: Content {
@@ -128,9 +130,12 @@ extension GitHub {
             public let content: Data
             public let sha: SHA
 
-
             public struct New: Content {
                 public let content: String
+            }
+
+            public var string: String? {
+                return String(data: content, encoding: .utf8)
             }
         }
 
