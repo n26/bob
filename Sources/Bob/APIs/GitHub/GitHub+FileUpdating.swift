@@ -22,41 +22,69 @@ import Dispatch
 import Vapor
 
 public protocol ItemUpdater {
-    
+
+    /// Filters the items to be updated
+    ///
+    /// - Parameter items: All the items in the three
+    /// - Returns: The items that should be updated.
     func itemsToUpdate(from items: [TreeItem]) -> [TreeItem]
+
+
+    /// Updates the filtered
+    ///
+    /// - Parameters:
+    ///   - item: The three item
+    ///   - content: The content of the three item as
+    /// - Returns: The new content of the tree item that will be comitted
     func update(_ item: TreeItem, content: String) throws -> String
 }
 
-//fileprivate class BatchItemUpdater {
-//    
-//    private let items: [TreeItem]
-//    private let updater: ItemUpdater
-//    init(items: [TreeItem], updater: ItemUpdater) {
-//        self.items = items
-//        self.updater = updater
-//    }
-//    
-//    func update(using api: GitHub) throws -> [TreeItem] {
-//        let itemsToUpdate = self.updater.itemsToUpdate(from: self.items)
-//        let updater = self.updater
-//        return try itemsToUpdate.map {
-//            let content = try api.content(forBlobWith: $0.sha)
-//            
-//            let newContent = try updater.update($0, content: content)
-//            
-//            let newBlobSHA = try api.newBlob(with: newContent)
-//            
-//            return TreeItem(path: $0.path, mode: $0.mode, type: $0.type, sha: newBlobSHA)
-//        }
-//    }
-//    
-//}
-//
+fileprivate class BatchItemUpdater {
+
+    private let updater: ItemUpdater
+    private let github: GitHub
+
+    init(github: GitHub, updater: ItemUpdater) {
+        self.github = github
+        self.updater = updater
+    }
+
+
+    /// Each item is passed to the `ItemUpdater` to determine if it should be updated.
+    /// For `ThreeItem` that the `ItemUpdater` wants to update, the content is fetched and passed again to the `ItemUpdater`
+    /// The new content returned from by the `ItemUpdater` creates a new GitBlob its corresponding `TreeItem`
+    ///
+    /// - Parameter items: The list of items passed to the Updater
+    /// - Returns: A future list of `ThreeItem` that were updated
+    func update(items: [TreeItem], on worker: Worker) throws -> Future<[TreeItem]> {
+
+        var updatedFutureItems = [Future<TreeItem>]()
+        for item in updater.itemsToUpdate(from: items) {
+            updatedFutureItems.append(try update(item: item))
+        }
+
+        // wait for all items
+        return updatedFutureItems.flatten(on: worker)
+    }
+
+    private func update(item: TreeItem) throws -> Future<TreeItem> {
+        let result = try github.gitBlob(sha: item.sha).map(to: String.self) { blob in
+            // todo pass data to the updater
+            return try self.updater.update(item, content: blob.string!)
+        }.flatMap { newContent in
+            try self.github.newBlob(data: newContent)
+        }.map { newBlob in
+            return TreeItem(path: item.path, mode: item.mode, type: item.type, sha: newBlob.sha)
+        }
+        return result
+    }
+}
+
 public extension GitHub {
 
     struct CurrentState {
         let items: [TreeItem]
-        let currentCommitSHA: String
+        let currentCommitSHA: GitHub.Repos.Commit.SHA
         let treeSHA: Git.Tree.SHA
     }
 
@@ -80,12 +108,34 @@ public extension GitHub {
         }
     }
 
-    //    public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws {
-    //        let repositoryState = try self.currentState(on: branch)
-    //        let updatedItems = try BatchItemUpdater(items: repositoryState.items, updater: updater).update(using: self)
-    //        let newTreeSHA = try self.newTree(withBaseSHA: repositoryState.treeSHA, items: updatedItems)
-    //        let newCommitSHA = try self.newCommit(by: author, message: message, parentSHA: repositoryState.currentCommitSHA, treeSHA: newTreeSHA)
-    //        try self.updateRef(to: newCommitSHA, on: branch)
-    //    }
+    public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws -> Future<GitHub.Git.Reference>{
+
+        // Get the repo state
+        let respositoryState = try currentState(on: branch)
+
+        // Pass the items to the updater
+        let updatedItems = respositoryState.flatMap(to: [TreeItem].self) { respositoryState in
+            let batchUpdater = BatchItemUpdater(github: self, updater: updater)
+            return try batchUpdater.update(items: respositoryState.items, on: self.worker)
+        }
+
+        // wait for both repo state and updated items to create a new tree
+        let newTree = flatMap(respositoryState, updatedItems) { respositoryState, updatedItems in
+            return try self.newTree(tree: Tree.New(baseTree: respositoryState.treeSHA, tree: updatedItems))
+        }
+
+        // wait for both repo state and the new tree
+        let commit = map(respositoryState, newTree) { state, newTree in
+            return (state.currentCommitSHA, newTree.sha)
+        }.flatMap { parentSHA, treeSHA in
+            // to create a new commit
+            return try self.newCommit(by: author, message: message, parentSHA: parentSHA, treeSHA: treeSHA)
+        }.flatMap { newCommit in
+            // and update the ref
+            return try self.updateRef(to: newCommit.sha, on: branch)
+        }
+        return commit
+
+    }
 
 }
