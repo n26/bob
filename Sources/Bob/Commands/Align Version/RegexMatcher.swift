@@ -20,7 +20,6 @@
 import Foundation
 
 public class RegexMatcher {
-    
     private var text: String
     public init(text: String) {
         self.text = text
@@ -31,7 +30,6 @@ public class RegexMatcher {
     /// - Parameters:
     ///   - regexString: Regex to match
     public func matches(stringMatching regexString: String) -> [String] {
-        
         var ranges = [Range<String.Index>]()
         
         var range: Range<String.Index>? = Range<String.Index>(uncheckedBounds: (lower: text.startIndex, upper: text.endIndex))
@@ -68,5 +66,4 @@ public class RegexMatcher {
     public var result: String {
         return self.text
     }
-    
 }

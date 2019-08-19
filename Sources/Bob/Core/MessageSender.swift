@@ -21,8 +21,6 @@ import Foundation
 
 /// Protocol used to send messages to the user
 public protocol MessageSender {
-    
-    
     /// Sends a message to the user.
     ///
     /// - Parameter message: Message to send

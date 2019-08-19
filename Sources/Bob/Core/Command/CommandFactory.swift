@@ -20,7 +20,6 @@
 import Foundation
 
 class CommandFactory {
-
     enum CommandFactoryError: Error {
         case register(String)
     }
@@ -40,5 +39,4 @@ class CommandFactory {
         let lowercasedName = name.lowercased()
         return self.commands.first(where: { $0.name.lowercased() == lowercasedName })
     }
-    
 }

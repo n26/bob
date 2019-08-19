@@ -17,14 +17,12 @@
  * along with Bob.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-
 import Foundation
 import Vapor
 
 extension GitHub {
-
     /// Helper methods that returns the latest commit sha on the specified branch
-    public func currentCommitSHA(on branch: GitHub.Repos.Branch.BranchName) throws -> Future<GitHub.Repos.Commit.SHA>  {
+    public func currentCommitSHA(on branch: GitHub.Repos.Branch.BranchName) throws -> Future<GitHub.Repos.Commit.SHA> {
         return try self.branch(branch).map(to: String.self) { branchDetail in
             return branchDetail.commit.sha
         }
@@ -37,5 +35,3 @@ extension GitHub {
         }
     }
 }
-
-

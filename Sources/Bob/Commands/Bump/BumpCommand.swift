@@ -22,7 +22,6 @@ import Vapor
 
 // Command used to bump up build numbers directly on GitHub
 public class BumpCommand {
-    
     struct Constants {
         static let branchSpecifier: String = "-b"
     }
@@ -59,7 +58,6 @@ public class BumpCommand {
 }
 
 extension BumpCommand: Command {
-
     public var name: String {
         return "bump"
     }
@@ -87,7 +85,7 @@ extension BumpCommand: Command {
 
         sender.send("One sec...")
 
-        let _ = try gitHub.currentState(on: branch).map(to: TreeItem.self) { currentState in
+        _ = try gitHub.currentState(on: branch).map(to: TreeItem.self) { currentState in
             return try currentState.items.firstItem(named: self.versionPlist)
         }.flatMap { treeItem in
             return try self.fetchVersion(plistFile: treeItem)
@@ -97,7 +95,7 @@ extension BumpCommand: Command {
             let message = version.commitMessage(template: self.message)
 
             return try self.gitHub.newCommit(updatingItemsWith: align, on: branch, by: self.author, message: message)
-        }.map { reference in
+        }.map { _ in
             sender.send("ok")
         }.catch { error in
             sender.send("Command failed with error ```\(error)```")

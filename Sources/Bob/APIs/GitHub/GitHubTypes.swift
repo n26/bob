@@ -26,7 +26,6 @@ public typealias BranchName = GitHub.Repos.Branch.BranchName
 public typealias Author = GitHub.Author
 
 extension GitHub {
-
     static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
@@ -69,10 +68,8 @@ extension GitHub {
         }
     }
 
-
     /// https://developer.github.com/v3/git/
     public struct Git {
-
         public struct Commit: Content {
             public typealias SHA = String
 
@@ -156,7 +153,6 @@ extension GitHub {
 
     /// https://developer.github.com/v3/repos/
     public struct Repos {
-
         /// Struct representing a Branch.
         /// Only contains name since it is the only
         /// property used by current functionality
@@ -182,8 +178,6 @@ extension GitHub {
         }
 
         public enum GitContent: Content {
-
-
             public func encode(to encoder: Encoder) throws {
                 var container = encoder.container(keyedBy: RawKeys.self)
 
@@ -212,9 +206,9 @@ extension GitHub {
                     return name
                 case .directory(let name):
                     return name
-                case .symlink(let name,_):
+                case .symlink(let name, _):
                     return name
-                case .submodule(let name,_):
+                case .submodule(let name, _):
                     return name
                 }
             }
@@ -243,14 +237,13 @@ extension GitHub {
             }
 
             public init(from decoder: Decoder) throws {
-
                 let container = try decoder.container(keyedBy: RawKeys.self)
                 let type = try container.decode(RawType.self, forKey: .type)
 
                 let name = try container.decode(String.self, forKey: .name)
                 switch type {
                 case .file:
-                    let data  = try container.decodeIfPresent(Data.self, forKey: .content)
+                    let data = try container.decodeIfPresent(Data.self, forKey: .content)
                     self = .file(name: name, data: data)
                 case .dir:
                     self = .directory(name: name)

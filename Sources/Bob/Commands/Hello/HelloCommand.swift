@@ -20,7 +20,6 @@
 import Foundation
 
 class HelloCommand: Command {
-    
     var name: String {
         return "hello"
     }
@@ -32,5 +31,4 @@ class HelloCommand: Command {
     func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         sender.send("Hi there 👋")
     }
-    
 }

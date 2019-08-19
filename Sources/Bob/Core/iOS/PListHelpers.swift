@@ -8,7 +8,6 @@
 import Foundation
 
 class PListHelpers {
-    
     static let versionRegexString: String = "<key>CFBundleShortVersionString<\\/key>\\s*<string>(\\S+)<\\/string>"
     static let versionKey: String = "CFBundleShortVersionString"
     static let buildNumberRegexString: String = "<key>CFBundleVersion<\\/key>\\s*<string>(\\S+)<\\/string>"
@@ -29,7 +28,6 @@ class PListHelpers {
     }
 
     static func version(fromPlistContent content: String) throws -> (version: String, build: String) {
-
         let matcher = RegexMatcher(text: content)
 
         let versions = matcher.matches(stringMatching: PListHelpers.versionRegexString)

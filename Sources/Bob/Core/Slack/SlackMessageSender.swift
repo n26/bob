@@ -20,7 +20,6 @@
 import Foundation
 import Vapor
 
-
 extension WebSocket {
     func send<T: Encodable>(message: T) throws {
         let encoder = JSONEncoder()
@@ -31,9 +30,7 @@ extension WebSocket {
     }
 }
 
-
 class SlackMessageSender: MessageSender {
-    
     private let socket: WebSocket
     private let channel: String
     init(socket: WebSocket, channel: String) {

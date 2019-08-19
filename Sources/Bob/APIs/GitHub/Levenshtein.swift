@@ -22,7 +22,6 @@
 import Foundation
 
 extension String {
-    
     func levenshtein(to other: String) -> Int {
         let m = self.characters.count
         let n = other.characters.count

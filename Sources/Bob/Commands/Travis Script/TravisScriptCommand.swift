@@ -32,13 +32,11 @@ public struct TravisTarget {
     }
 }
 
-
 /// Command executing a script on TravisCI
 /// Script are provided via `TravisTarget`s. In case 
 /// only 1 traget is provided, the user does not have 
 /// to type in the target name
 public class TravisScriptCommand {
-    
     public let name: String
     fileprivate let travis: TravisCI
     fileprivate let targets: [TravisTarget]
@@ -59,11 +57,9 @@ public class TravisScriptCommand {
         self.defaultBranch = defaultBranch
         self.gitHub = gitHub
     }
-    
 }
 
 extension TravisScriptCommand: Command {
-
     struct Constants {
         static let branchSpecifier: String = "-b"
     }
@@ -74,14 +70,13 @@ extension TravisScriptCommand: Command {
 
         if self.targets.count != 1 {
             message += "\nAvailable targets:"
-            self.targets.forEach({ message += "\n• " + $0.name})
+            self.targets.forEach({ message += "\n• " + $0.name })
         }
 
         return message
     }
 
     public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
-
         var params = parameters
         /// Resolve target
         var target: TravisTarget!
@@ -108,7 +103,7 @@ extension TravisScriptCommand: Command {
 
         guard params.count == 0 else { throw "To many parameters. See `\(self.name) usage` for instructions on how to use this command" }
 
-        let _ = try self.assertGitHubBranchIfPossible(branch).flatMap {
+        _ = try self.assertGitHubBranchIfPossible(branch).flatMap {
             return try self.travis.execute(target.script, on: branch)
         }.map { success  in
             if success {
@@ -116,7 +111,6 @@ extension TravisScriptCommand: Command {
             } else {
                 sender.send("Executing target *" + target.name + "* on branch *" + branch + "* failed")
             }
-
         }.catch { error in
             sender.send("Command failed with error ```\(error)```")
         }

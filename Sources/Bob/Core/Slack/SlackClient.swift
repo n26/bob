@@ -18,11 +18,11 @@
  */
 
 import Foundation
-import Vapor
 import HTTP
+import Vapor
 
 extension Client {
-    func loadRealtimeApi(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws ->  EventLoopFuture<Response> {
+    func loadRealtimeApi(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws -> EventLoopFuture<Response> {
         var headers = HTTPHeaders()
         headers.add(name: HTTPHeaderName.accept, value: "application/json; charset=utf-8")
 
@@ -34,12 +34,10 @@ extension Client {
         ]
 
         return get(components.url!, headers: headers, beforeSend: { _ in })
-
     }
 }
 
 class SlackClient {
-
     private let token: String
     private let app: Application
     init(token: String, app: Application) {
@@ -50,13 +48,11 @@ class SlackClient {
     func connect(onMessage: @escaping (_ message: String, _ sender: MessageSender) -> Void) throws {
         print("Starting Slack connection")
 
-
         let response = try app.client().loadRealtimeApi(token: token).wait()
         let slackResponse = try response.content.decode(SlackStartResponse.self).wait()
 
-        let _ = try app.client().webSocket(slackResponse.url).flatMap { ws -> Future<Void> in
-
-            ws.onText  { ws, text in
+        _ = try app.client().webSocket(slackResponse.url).flatMap { ws -> Future<Void> in
+            ws.onText { ws, text in
                 print("[event] - \(text)")
 
                 guard
@@ -74,5 +70,4 @@ class SlackClient {
             return ws.onClose
         }
     }
-    
 }

@@ -20,8 +20,6 @@
 import Foundation
 
 struct ExecutableCommand {
-    
     let command: Command
     let parameters: [String]
-    
 }

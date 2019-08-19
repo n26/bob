@@ -29,7 +29,6 @@ enum SlackMessageType: String, Encodable {
 }
 
 struct SlackMessage: Encodable {
-
     static var messageCounter: Int = 0
     static var lastTimestamp: UInt64 = 0
 
@@ -40,8 +39,6 @@ struct SlackMessage: Encodable {
     let text: String
 
     init(to channel: String, text: String) {
-
-
         let timestamp = UInt64(floor(Date().timeIntervalSince1970))
         if timestamp != SlackMessage.lastTimestamp {
             SlackMessage.lastTimestamp = timestamp
@@ -54,4 +51,3 @@ struct SlackMessage: Encodable {
         self.text = text
     }
 }
-

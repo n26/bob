@@ -20,7 +20,6 @@
 import Foundation
 
 class VersionUpdater: ItemUpdater {
-    
     private let plistPaths: [String]
     private let version: Version
     init(plistPaths: [String], version: Version) {
