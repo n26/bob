@@ -50,22 +50,22 @@ public class AlignVersionCommand {
 }
 
 extension AlignVersionCommand: Command {
-    
+
     public var name: String {
         return "align"
     }
-    
+
     public var usage: String {
         return "Change version and build number by typing `align {version} {build number}`. Build number defaults to `\(Constants.defaultBuildNumber)` if not specified. Specify a branch by typing `\(Constants.branchSpecifier) {branch}`."
     }
-    
+
     public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         guard plistPaths.count > 0 else {
             throw "Failed to align version. Misconfiguration of the `align` command. Missing Plist file paths."
         }
-        
+
         var params = parameters
-        
+
         var specifiedBranch: BranchName?
         if let branchSpecifierIndex = params.index(where: { $0 == Constants.branchSpecifier }) {
             guard params.count > branchSpecifierIndex + 1 else { throw "Branch name not specified after `\(Constants.branchSpecifier)`" }
@@ -73,13 +73,13 @@ extension AlignVersionCommand: Command {
             params.remove(at: branchSpecifierIndex + 1)
             params.remove(at: branchSpecifierIndex)
         }
-        
+
         guard let branch = specifiedBranch else { throw "Please specify a branch" }
         guard params.count > 0 else { throw "Please specify a `version` parameter. See `\(self.name) usage` for instructions on how to use this command" }
-        
-        let version = params[0]
+
+        let versionParam = params[0]
         params.remove(at: 0)
-        
+
         let buildNumber: String
         if params.count > 0 {
             buildNumber = params[0]
@@ -87,16 +87,20 @@ extension AlignVersionCommand: Command {
         } else {
             buildNumber = Constants.defaultBuildNumber
         }
-        
+
         guard params.count == 0 else { throw "To many parameters. See `\(self.name) usage` for instructions on how to use this command" }
-        
+
         sender.send("One sec...")
-        let updater = VersionUpdater(plistPaths: self.plistPaths, version: version, buildNumber: buildNumber)
-        let versionString = "\(version) (\(buildNumber))"
-        let message = self.messageFormat.replacingOccurrences(of: "<version>", with: versionString)
-        
-        try self.gitHub.newCommit(updatingItemsWith: updater, on: branch, by: self.author, message: message)
-        sender.send("Done. Version aligned to *" + versionString + "* on branch *" + branch.name + "*")
+        let version = Version(version: versionParam, build: buildNumber)
+        let updater = VersionUpdater(plistPaths: self.plistPaths, version: version)
+
+
+        let message = version.commitMessage(template: messageFormat)
+
+        let _ = try self.gitHub.newCommit(updatingItemsWith: updater, on: branch, by: self.author, message: message).map { reference in
+            sender.send("Done. Version aligned to *" + version.fullVersion + "* on branch *" + branch + "*")
+        }.catch { error in
+            sender.send("Command failed with error ```\(error)```")
+        }
     }
-    
 }

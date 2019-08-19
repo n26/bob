@@ -151,7 +151,7 @@ public class GitHub {
 
     public func newBlob(data: String) throws -> Future<GitHub.Git.Blob.New.Response> {
         let blob = GitHub.Git.Blob.New(content: data)
-        return try post(body: blob, to: uri(at: "/git/blobs/"))
+        return try post(body: blob, to: uri(at: "/git/blobs"))
     }
 
 

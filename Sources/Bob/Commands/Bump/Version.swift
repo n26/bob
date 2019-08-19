@@ -66,17 +66,18 @@ struct Version {
         return Version(version: version, build: try build.bump())
     }
 
-
-
+    /// version + build number
+    var fullVersion: String {
+        return "\(version) (\(build.value))"
+    }
     /// Commit message using the version and build number
     ///
     /// - Parameter template: Optional template where `<version>` will be replaced with the version string
     /// - Returns: e.g. `Version 3.2.0 123`
     func commitMessage(template: String? = nil) -> String {
-        let versionString = "\(version) (\(build.value))"
         guard let template = template else {
-            return versionString
+            return fullVersion
         }
-        return template.replacingOccurrences(of: "<version>", with: versionString)
+        return template.replacingOccurrences(of: "<version>", with: fullVersion)
     }
 }
