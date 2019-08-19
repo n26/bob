@@ -41,6 +41,18 @@ public extension GitHub {
         }
     }
 
+    /**
+        Helper method to assert that the specified branch exists.
+        The Future's `futureResult` is called when the branch does exist otherwise it's `.failure`
+
+        ```
+         try gitHub.assertBranchExists(branch).map {
+            // do something with the branch
+         }.catch { error in
+            // branch does not exists
+         }
+         ```
+    */
     public func assertBranchExists(_ branch: BranchName) throws -> Future<Void> {
         return try branchExists(branch).map { result  in
             if !result.branchExists {

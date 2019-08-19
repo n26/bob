@@ -63,25 +63,25 @@ public class TravisScriptCommand {
 }
 
 extension TravisScriptCommand: Command {
-    
+
     struct Constants {
         static let branchSpecifier: String = "-b"
     }
-    
+
     public var usage: String {
         let target = self.targets.count == 1 ? "" : " {{target}}"
-        var message = "Triger a script by saying `\(self.name + target) \(Constants.branchSpecifier) {{branch}}`. I'll do the job for you. `branch` parameter is optional and it defaults to `\(self.defaultBranch.name)`"
-        
+        var message = "Triger a script by saying `\(self.name + target) \(Constants.branchSpecifier) {{branch}}`. I'll do the job for you. `branch` parameter is optional and it defaults to `\(self.defaultBranch)`"
+
         if self.targets.count != 1 {
             message += "\nAvailable targets:"
             self.targets.forEach({ message += "\n• " + $0.name})
         }
-        
+
         return message
     }
-    
+
     public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
-        
+
         var params = parameters
         /// Resolve target
         var target: TravisTarget!
@@ -96,7 +96,7 @@ extension TravisScriptCommand: Command {
             guard let existingTarget = self.targets.first(where: { $0.name == targetName }) else { throw "Unknown target `\(targetName)`." }
             target = existingTarget
         }
-        
+
         /// Resolve branch
         var branch: BranchName = self.defaultBranch
         if let branchSpecifierIndex = params.index(where: { $0 == Constants.branchSpecifier }) {
@@ -105,20 +105,27 @@ extension TravisScriptCommand: Command {
             params.remove(at: branchSpecifierIndex + 1)
             params.remove(at: branchSpecifierIndex)
         }
-        
+
         guard params.count == 0 else { throw "To many parameters. See `\(self.name) usage` for instructions on how to use this command" }
-        
-        try self.assertGitHubBranchIfPossible(branch)
-        
-        try self.travis.execute(target.script, on: branch)
-        sender.send("Got it! Executing target *" + target.name + "* on branch *" + branch.name + "*")
-    }
-    
-    private func assertGitHubBranchIfPossible(_ branch: BranchName) throws {
-        if let gitHub = self.gitHub {
-            /// If GitHub is provided, perform the branch check
-            try gitHub.assertBranchExists(branch)
+
+        let _ = try self.assertGitHubBranchIfPossible(branch).flatMap {
+            return try self.travis.execute(target.script, on: branch)
+        }.map { success  in
+            if success {
+                sender.send("Got it! Executing target *" + target.name + "* on branch *" + branch + "*")
+            } else {
+                sender.send("Executing target *" + target.name + "* on branch *" + branch + "* failed")
+            }
+
+        }.catch { error in
+            sender.send("Command failed with error ```\(error)```")
         }
     }
-    
+
+    private func assertGitHubBranchIfPossible(_ branch: BranchName) throws -> Future<Void> {
+        guard let gitHub = self.gitHub else {
+            return travis.worker.future()
+        }
+        return try gitHub.assertBranchExists(branch)
+    }
 }

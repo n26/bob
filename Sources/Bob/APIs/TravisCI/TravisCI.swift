@@ -58,6 +58,10 @@ public class TravisCI {
     private let config: Configuration
     private let app: Application
 
+    var worker: Worker {
+        return app
+    }
+
     private lazy var headers: HTTPHeaders = {
         var headers  = HTTPHeaders()
         headers.add(name: HTTPHeaderName.accept, value: "")
