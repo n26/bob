@@ -29,7 +29,7 @@ extension GitHub {
 
     static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss'Z'"
         return formatter
     }()
     static let decoder: JSONDecoder = {
@@ -132,6 +132,10 @@ extension GitHub {
 
             public struct New: Content {
                 public let content: String
+
+                public struct Response: Content {
+                    public let sha: SHA
+                }
             }
 
             public var string: String? {
@@ -175,8 +179,6 @@ extension GitHub {
 
             public let sha: SHA
             public let url: URL
-            public let commit: GitHub.Git.Commit
-
         }
 
         public enum GitContent: Content {
