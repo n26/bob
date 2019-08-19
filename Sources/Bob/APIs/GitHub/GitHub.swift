@@ -22,10 +22,27 @@ import Vapor
 import HTTP
 
 
-enum GitHubError: Error {
+enum GitHubError: LocalizedError {
     case invalidBranch(name: String)
     case invalidParam(String)
+    case invalidStatus(httpStatus: UInt, body: String?)
     case decoding(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case .decoding(let message):
+            return "Decoding error: \(message)"
+        case .invalidBranch(let name):
+            return "The branch '\(name)' does not exists"
+        case .invalidParam(let param):
+            return "Invalid parameter '\(param)'"
+        case .invalidStatus(let httpStatus, let body):
+            var message = "Invalid response status '\(httpStatus)')"
+            body.flatMap { message += " body: \($0)"  }
+            return message
+        }
+    }
+
 }
 
 /// Used for communicating with the GitHub api
@@ -132,7 +149,7 @@ public class GitHub {
         return try get(uri(at: "/git/blobs/" + sha))
     }
 
-    public func newBlob(data: String) throws -> Future<GitHub.Git.Blob> {
+    public func newBlob(data: String) throws -> Future<GitHub.Git.Blob.New.Response> {
         let blob = GitHub.Git.Blob.New(content: data)
         return try post(body: blob, to: uri(at: "/git/blobs/"))
     }
@@ -146,6 +163,7 @@ public class GitHub {
         return try post(body: tree, to: uri(at: "/git/trees"))
     }
 
+    /// https://developer.github.com/v3/git/commits/#create-a-commit
     public func newCommit(by author: Author, message: String, parentSHA: String, treeSHA: String) throws -> Future<GitHub.Git.Commit> {
         let body = GitCommit.New(message: message, tree: treeSHA, parents: [parentSHA], author: author)
         return try post(body: body, to: uri(at: "/git/commits"))
@@ -165,6 +183,14 @@ public class GitHub {
 
         let futureResult = try app.client().send(req)
         let featureContent = futureResult.flatMap { response -> EventLoopFuture<T> in
+            guard response.http.status.isSuccessfulRequest else {
+
+                var responseBody: String?
+                if let data = response.http.body.data {
+                    responseBody = String(data: data, encoding: .utf8)
+                }
+                throw GitHubError.invalidStatus(httpStatus: response.http.status.code, body: responseBody)
+            }
             let futureDecode =  try response.content.decode(json: T.self, using: decoder)
             futureDecode.whenFailure { error in
                 print("\(request.method.string) \(request.url): \(error)")
@@ -181,9 +207,10 @@ public class GitHub {
     }
 
     private func post<Body: Content, T: Content>(body: Body, to uri: String, encoder: JSONEncoder = GitHub.encoder, using decoder: JSONDecoder = GitHub.decoder, patch: Bool = false ) throws -> Future<T> {
-        var request = HTTPRequest(method: patch ? .POST : .PATCH, url: uri)
+        var request = HTTPRequest(method: patch ? .PATCH : .POST, url: uri)
         let data  = try encoder.encode(body)
         request.body = HTTPBody(data: data)
+        request.contentType = .json
         return try perform(request, using: decoder)
     }
 }

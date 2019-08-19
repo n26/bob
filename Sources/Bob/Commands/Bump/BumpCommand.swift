@@ -97,8 +97,10 @@ extension BumpCommand: Command {
             let message = version.commitMessage(template: self.message)
 
             return try self.gitHub.newCommit(updatingItemsWith: align, on: branch, by: self.author, message: message)
+        }.map { reference in
+            sender.send("ok")
         }.catch { error in
-            sender.send(error.localizedDescription)
+            sender.send("Command failed with error ```\(error)```")
         }
     }
 }

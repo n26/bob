@@ -23,12 +23,14 @@ import Vapor
 
 extension GitHub {
 
+    /// Helper methods that returns the latest commit sha on the specified branch
     public func currentCommitSHA(on branch: GitHub.Repos.Branch.BranchName) throws -> Future<GitHub.Repos.Commit.SHA>  {
         return try self.branch(branch).map(to: String.self) { branchDetail in
             return branchDetail.commit.sha
         }
     }
 
+    /// Helper methods that returns the tree sha for the specified commit sha
     public func treeSHA(forCommitSHA sha: GitHub.Git.Commit.SHA) throws -> Future<GitHub.Git.Tree.SHA> {
         return try self.gitCommit(sha: sha).map(to: GitHub.Git.Tree.SHA.self) { singleCommit   in
             return singleCommit.tree.sha

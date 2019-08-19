@@ -69,8 +69,8 @@ fileprivate class BatchItemUpdater {
 
     private func update(item: TreeItem) throws -> Future<TreeItem> {
         let result = try github.gitBlob(sha: item.sha).map(to: String.self) { blob in
-            // todo pass data to the updater
-            return try self.updater.update(item, content: blob.string!)
+            guard let content = blob.string else { throw "Could not convert blob content to string" }
+            return try self.updater.update(item, content: content)
         }.flatMap { newContent in
             try self.github.newBlob(data: newContent)
         }.map { newBlob in
@@ -108,6 +108,15 @@ public extension GitHub {
         }
     }
 
+    /**
+        Helper methods that passes the latest files on a specified branch to a ItemUpdate and creates a new commit with the update items/
+
+        It
+        - fetches the current repo at the specified branch
+        - Passes the file list to the file updater
+        - Creates a new tree with the update files
+        - Creates a new commit
+    */
     public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws -> Future<GitHub.Git.Reference>{
 
         // Get the repo state
