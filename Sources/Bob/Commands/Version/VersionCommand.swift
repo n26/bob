@@ -20,7 +20,6 @@
 import Foundation
 
 class VersionCommand: Command {
-
     var name: String {
         return "version"
     }
@@ -32,5 +31,4 @@ class VersionCommand: Command {
     func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         sender.send("Version " + Bob.version)
     }
-    
 }

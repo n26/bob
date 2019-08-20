@@ -21,8 +21,7 @@ import Foundation
 import Vapor
 
 public class Bob {
-    
-    static let version: String = "1.3.2"
+    static let version: String = "2.0.0"
     
     /// Struct containing all properties needed for Bob to function
     public struct Configuration {
@@ -52,7 +51,6 @@ public class Bob {
         self.executor = CommandExecutor()
     }
     
-    
     /// Registers commands so they become available for usage
     ///
     /// - Parameter commands: Commands to register
@@ -63,13 +61,11 @@ public class Bob {
         }
     }
     
-    
     /// Starts listening to messages and processing them
     ///
     /// - Throws: Throws an error if it occurs
     public func start() throws {
-        try self.slackClient.connect { (message, sender) in
-            
+        try self.slackClient.connect { message, sender in
             do {
                 let commands = try self.processor.executableCommands(from: message)
                 if commands.count > 0 {
@@ -88,19 +84,14 @@ public class Bob {
                     sender.send(error.userFriendlyMessage)
                 }
             }
-            
-            
         }
     }
-    
 }
 
 fileprivate extension CommandFactory {
-    
     var availableCommands: String {
         var string = "Available commands:"
-        self.commands.forEach({ string += "\n• " + $0.name})
+        self.commands.forEach({ string += "\n• " + $0.name })
         return string
     }
-    
 }

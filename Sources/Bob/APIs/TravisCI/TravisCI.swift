@@ -18,8 +18,8 @@
  */
 
 import Foundation
-import Vapor
 import HTTP
+import Vapor
 
 /// Struct representing a script
 /// Additional config can also be provided
@@ -41,8 +41,6 @@ extension Dictionary where Key: ExpressibleByStringLiteral, Value: Any {
 
 /// Used for communication with TravisCI api
 public class TravisCI {
-    
-    
     /// Configuration needed for authentication with the api
     public struct Configuration {
         /// Url of the repo. Along the lines of https://api.travis-ci.com/repo/{owner%2Frepo}
@@ -63,7 +61,7 @@ public class TravisCI {
     }
 
     private lazy var headers: HTTPHeaders = {
-        var headers  = HTTPHeaders()
+        var headers = HTTPHeaders()
         headers.add(name: HTTPHeaderName.accept, value: "")
         headers.add(name: HTTPHeaderName.authorization, value: "token \(config.token)")
         headers.add(name: "Travis-API-Version", value: "3")
@@ -78,7 +76,6 @@ public class TravisCI {
         self.config = config
         self.app = app
     }
-    
     
     /// Triggers a TravisCI job executing a script named `script`
     ///

@@ -20,7 +20,6 @@
 import Foundation
 
 public protocol Command {
-    
     /// The name used to idenitfy a command (`hello`, `version` etc.). Case insensitive
     var name: String { get }
     
@@ -35,5 +34,4 @@ public protocol Command {
     ///   - completion: block to be called when the command finishes. In case of an error, pass it in
     /// - Throws: An error is thrown if something goes wrong while executing the command, usualy while parsing the parameters
     func execute(with parameters: [String], replyingTo sender: MessageSender) throws
-    
 }

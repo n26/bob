@@ -19,9 +19,7 @@
 
 import Foundation
 
-
 struct Version {
-
     struct Build {
         public let value: String
         public init(_ value: String) {

@@ -20,7 +20,6 @@
 import Foundation
 
 class CommandProcessor {
-    
     struct ProcessingError: Error {
         let commandName: String
     }
@@ -30,14 +29,12 @@ class CommandProcessor {
         self.factory = factory
     }
     
-    
     /// Returns an array of commands parsed from the message
     ///
     /// - Parameter message: message to parse
     /// - Returns: array of commands.
     /// - Throws: Throws `CommandProcessor.ProcessingError` if a command for specified name does not exist
     func executableCommands(from message: String) throws -> [ExecutableCommand] {
-        
         var commands: [ExecutableCommand] = []
         let commandLines = message.components(separatedBy: "|").map({ $0.trimmingCharacters(in: .whitespaces) })
         
@@ -58,5 +55,4 @@ class CommandProcessor {
         
         return commands
     }
-    
 }

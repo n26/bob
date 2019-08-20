@@ -18,9 +18,8 @@
  */
 
 import Foundation
-import Vapor
 import HTTP
-
+import Vapor
 
 enum GitHubError: LocalizedError {
     case invalidBranch(name: String)
@@ -38,16 +37,14 @@ enum GitHubError: LocalizedError {
             return "Invalid parameter '\(param)'"
         case .invalidStatus(let httpStatus, let body):
             var message = "Invalid response status '\(httpStatus)')"
-            body.flatMap { message += " body: \($0)"  }
+            body.flatMap { message += " body: \($0)" }
             return message
         }
     }
-
 }
 
 /// Used for communicating with the GitHub api
 public class GitHub {
-    
     /// Configuration needed for authentication with the api
     public struct Configuration {
         public let username: String
@@ -89,7 +86,6 @@ public class GitHub {
     public func branches() throws -> Future<[GitHub.Repos.Branch]> {
         return try get(uri(at: "/branches?per_page=100"))
     }
-
     
     public func branch(_ branch: GitHub.Repos.Branch.BranchName) throws -> Future<GitHub.Repos.BranchDetail> {
         return try get(uri(at: "/branches/" + branch))
@@ -113,7 +109,6 @@ public class GitHub {
     ///   - perPage: Number of commits per page
     ///   - path: Directory within repository (optional). Only commits with files touched within path will be returned
     public func commits(after sha: String? = nil, page: Int? = nil, perPage: Int? = nil, path: String? = nil) throws -> Future<[GitHub.Repos.Commit]> {
-
         var components = URLComponents(string: "")!
         var items = [URLQueryItem]()
         components.path = "/commits"
@@ -154,7 +149,6 @@ public class GitHub {
         return try post(body: blob, to: uri(at: "/git/blobs"))
     }
 
-
     public func trees(for treeSHA: GitHub.Git.Tree.SHA) throws -> Future<GitHub.Git.Tree> {
         return try self.get(uri(at: "/git/trees/" + treeSHA + "?recursive=1"))
     }
@@ -174,7 +168,6 @@ public class GitHub {
         return try post(body: body, to: uri(at: "/git/refs/heads/" + branch), patch: true)
     }
 
-
     // MARK: - Private
 
     private func perform<T: Content>(_ request: HTTPRequest, using decoder: JSONDecoder = JSONDecoder()) throws -> Future<T> {
@@ -184,14 +177,13 @@ public class GitHub {
         let futureResult = try app.client().send(req)
         let featureContent = futureResult.flatMap { response -> EventLoopFuture<T> in
             guard response.http.status.isSuccessfulRequest else {
-
                 var responseBody: String?
                 if let data = response.http.body.data {
                     responseBody = String(data: data, encoding: .utf8)
                 }
                 throw GitHubError.invalidStatus(httpStatus: response.http.status.code, body: responseBody)
             }
-            let futureDecode =  try response.content.decode(json: T.self, using: decoder)
+            let futureDecode = try response.content.decode(json: T.self, using: decoder)
             futureDecode.whenFailure { error in
                 print("\(request.method.string) \(request.url): \(error)")
             }
@@ -208,7 +200,7 @@ public class GitHub {
 
     private func post<Body: Content, T: Content>(body: Body, to uri: String, encoder: JSONEncoder = GitHub.encoder, using decoder: JSONDecoder = GitHub.decoder, patch: Bool = false ) throws -> Future<T> {
         var request = HTTPRequest(method: patch ? .PATCH : .POST, url: uri)
-        let data  = try encoder.encode(body)
+        let data = try encoder.encode(body)
         request.body = HTTPBody(data: data)
         request.contentType = .json
         return try perform(request, using: decoder)

@@ -20,10 +20,8 @@
 import Foundation
 
 class CommandExecutor {
-    
     func execute(_ commands: [ExecutableCommand], replyingTo originalSender: MessageSender) {
         for executable in commands {
-            
             var sender = originalSender
             if commands.count > 1 {
                 sender = PrefixedMessageSender(prefix: "[\(executable.command.name)]", sender: originalSender)
@@ -41,5 +39,4 @@ class CommandExecutor {
             }
         }
     }
-    
 }

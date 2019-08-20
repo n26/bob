@@ -22,7 +22,6 @@ import Vapor
 
 /// Command used to change the version and build numbers directly on GitHub
 public class AlignVersionCommand {
-    
     struct Constants {
         static let defaultBuildNumber: String = "1"
         static let branchSpecifier: String = "-b"
@@ -45,12 +44,9 @@ public class AlignVersionCommand {
         self.messageFormat = messageFormat
         self.author = author
     }
-    
-    
 }
 
 extension AlignVersionCommand: Command {
-
     public var name: String {
         return "align"
     }
@@ -94,10 +90,9 @@ extension AlignVersionCommand: Command {
         let version = Version(version: versionParam, build: buildNumber)
         let updater = VersionUpdater(plistPaths: self.plistPaths, version: version)
 
-
         let message = version.commitMessage(template: messageFormat)
 
-        let _ = try self.gitHub.newCommit(updatingItemsWith: updater, on: branch, by: self.author, message: message).map { reference in
+        _ = try self.gitHub.newCommit(updatingItemsWith: updater, on: branch, by: self.author, message: message).map { _ in
             sender.send("Done. Version aligned to *" + version.fullVersion + "* on branch *" + branch + "*")
         }.catch { error in
             sender.send("Command failed with error ```\(error)```")

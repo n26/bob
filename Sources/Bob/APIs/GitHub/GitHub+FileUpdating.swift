@@ -17,18 +17,16 @@
  * along with Bob.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import Foundation
 import Dispatch
+import Foundation
 import Vapor
 
 public protocol ItemUpdater {
-
     /// Filters the items to be updated
     ///
     /// - Parameter items: All the items in the three
     /// - Returns: The items that should be updated.
     func itemsToUpdate(from items: [TreeItem]) -> [TreeItem]
-
 
     /// Updates the filtered
     ///
@@ -39,8 +37,7 @@ public protocol ItemUpdater {
     func update(_ item: TreeItem, content: String) throws -> String
 }
 
-fileprivate class BatchItemUpdater {
-
+private class BatchItemUpdater {
     private let updater: ItemUpdater
     private let github: GitHub
 
@@ -49,7 +46,6 @@ fileprivate class BatchItemUpdater {
         self.updater = updater
     }
 
-
     /// Each item is passed to the `ItemUpdater` to determine if it should be updated.
     /// For `ThreeItem` that the `ItemUpdater` wants to update, the content is fetched and passed again to the `ItemUpdater`
     /// The new content returned from by the `ItemUpdater` creates a new GitBlob its corresponding `TreeItem`
@@ -57,7 +53,6 @@ fileprivate class BatchItemUpdater {
     /// - Parameter items: The list of items passed to the Updater
     /// - Returns: A future list of `ThreeItem` that were updated
     func update(items: [TreeItem], on worker: Worker) throws -> Future<[TreeItem]> {
-
         var updatedFutureItems = [Future<TreeItem>]()
         for item in updater.itemsToUpdate(from: items) {
             updatedFutureItems.append(try update(item: item))
@@ -81,17 +76,14 @@ fileprivate class BatchItemUpdater {
 }
 
 public extension GitHub {
-
     struct CurrentState {
         let items: [TreeItem]
         let currentCommitSHA: GitHub.Repos.Commit.SHA
         let treeSHA: Git.Tree.SHA
     }
 
-    public func currentState(on branch: BranchName) throws -> Future<CurrentState>  {
-
-        return try assertBranchExists(branch).flatMap { test -> Future<CurrentState> in
-
+    public func currentState(on branch: BranchName) throws -> Future<CurrentState> {
+        return try assertBranchExists(branch).flatMap { _ -> Future<CurrentState> in
             let commitSha = try self.currentCommitSHA(on: branch)
 
             let treeSha = commitSha.flatMap { sha in
@@ -117,8 +109,7 @@ public extension GitHub {
         - Creates a new tree with the update files
         - Creates a new commit
     */
-    public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws -> Future<GitHub.Git.Reference>{
-
+    public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws -> Future<GitHub.Git.Reference> {
         // Get the repo state
         let respositoryState = try currentState(on: branch)
 
@@ -144,7 +135,5 @@ public extension GitHub {
             return try self.updateRef(to: newCommit.sha, on: branch)
         }
         return commit
-
     }
-
 }
