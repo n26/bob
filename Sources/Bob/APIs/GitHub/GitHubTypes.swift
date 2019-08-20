@@ -21,6 +21,8 @@ import Vapor
 public typealias TreeItem = GitHub.Git.TreeItem
 public typealias Tree = GitHub.Git.Tree
 public typealias GitCommit = GitHub.Git.Commit
+public typealias GitContent = GitHub.Repos.GitContent
+public typealias RepoCommit = GitHub.Repos.Commit
 public typealias Branch = GitHub.Repos.Branch
 public typealias BranchName = GitHub.Repos.Branch.BranchName
 public typealias Author = GitHub.Author
@@ -92,6 +94,7 @@ extension GitHub {
             public let author: Author
             public let committer: Author
             public let tree: Tree
+            public let url: URL
         }
 
         public struct Tree: Content {
@@ -170,11 +173,26 @@ extension GitHub {
             let commit: Commit
         }
 
+        /// https://developer.github.com/v3/repos/commits/#get-a-single-commit
         public struct Commit: Content {
             public typealias SHA = String
 
+            public struct Details: Content {
+                public let message: String
+                public let author: Author
+                public let committer: Author
+            }
+
             public let sha: SHA
-            public let url: URL
+            public let htmlUrl: URL
+            public let details: Details
+
+            enum CodingKeys: String, CodingKey {
+                case sha
+                case htmlUrl
+                case details = "commit"
+            }
+
         }
 
         public enum GitContent: Content {

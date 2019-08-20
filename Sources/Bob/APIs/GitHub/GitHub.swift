@@ -67,7 +67,7 @@ public class GitHub {
     private let repoUrl: String
     private let app: Application
 
-    var worker: Worker {
+    public var worker: Worker {
         return app
     }
 
