@@ -19,7 +19,7 @@
 
 import NIOHTTP1
 
-extension HTTPResponseStatus {
+public extension HTTPResponseStatus {
     var isSuccessfulRequest: Bool {
         switch self {
         case .ok, .created, .accepted, .nonAuthoritativeInformation, .noContent, .resetContent, .partialContent: return true

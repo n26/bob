@@ -56,7 +56,7 @@ public class TravisCI {
     private let config: Configuration
     private let app: Application
 
-    var worker: Worker {
+    public var worker: Worker {
         return app
     }
 
