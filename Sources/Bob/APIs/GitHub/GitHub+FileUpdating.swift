@@ -120,7 +120,11 @@ public extension GitHub {
         }
 
         // wait for both repo state and updated items to create a new tree
-        let newTree = flatMap(respositoryState, updatedItems) { respositoryState, updatedItems in
+        let newTree = flatMap(to: Tree.self, respositoryState, updatedItems) { respositoryState, updatedItems in
+
+            if updatedItems.isEmpty {
+                throw "The updater \(updater) did not match any items to update"
+            }
             return try self.newTree(tree: Tree.New(baseTree: respositoryState.treeSHA, tree: updatedItems))
         }
 
