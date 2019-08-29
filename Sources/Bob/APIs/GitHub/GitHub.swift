@@ -170,39 +170,11 @@ public class GitHub {
 
     // MARK: - Private
 
-    private func perform<T: Content>(_ request: HTTPRequest, using decoder: JSONDecoder = JSONDecoder()) throws -> Future<T> {
-        let req = Request(http: request, using: app)
-        req.http.headers.basicAuthorization = authorization
-
-        let futureResult = try app.client().send(req)
-        let featureContent = futureResult.flatMap { response -> EventLoopFuture<T> in
-            guard response.http.status.isSuccessfulRequest else {
-                var responseBody: String?
-                if let data = response.http.body.data {
-                    responseBody = String(data: data, encoding: .utf8)
-                }
-                throw GitHubError.invalidStatus(httpStatus: response.http.status.code, body: responseBody)
-            }
-            let futureDecode = try response.content.decode(json: T.self, using: decoder)
-            futureDecode.whenFailure { error in
-                print("\(request.method.string) \(request.url): \(error)")
-            }
-            return futureDecode
-        }
-
-        return featureContent
+    private func get<T: Content>(_ uri: String) throws -> Future<T> {
+        return try app.client().get(uri, using: GitHub.decoder, authorization: authorization)
     }
 
-    private func get<T: Content>(_ uri: String, using decoder: JSONDecoder = GitHub.decoder) throws -> Future<T> {
-        let request = HTTPRequest(method: .GET, url: uri)
-        return try perform(request, using: decoder)
-    }
-
-    private func post<Body: Content, T: Content>(body: Body, to uri: String, encoder: JSONEncoder = GitHub.encoder, using decoder: JSONDecoder = GitHub.decoder, patch: Bool = false ) throws -> Future<T> {
-        var request = HTTPRequest(method: patch ? .PATCH : .POST, url: uri)
-        let data = try encoder.encode(body)
-        request.body = HTTPBody(data: data)
-        request.contentType = .json
-        return try perform(request, using: decoder)
+    private func post<Body: Content, T: Content>(body: Body, to uri: String, patch: Bool = false ) throws -> Future<T> {
+        return try app.client().post(body: body, to: uri, encoder: GitHub.encoder, using: GitHub.decoder, method: patch ? .PATCH : .POST, authorization: authorization)
     }
 }
