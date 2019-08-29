@@ -20,8 +20,6 @@
 import Foundation
 import Vapor
 
-
-
 extension Response {
     public struct Empty: Content { }
 }
@@ -30,7 +28,7 @@ public extension Client {
 
     func get<T: Content>(_ uri: String, using decoder: JSONDecoder = JSONDecoder(), authorization: BasicAuthorization? = nil) throws -> Future<T> {
         let request = HTTPRequest(method: .GET, url: uri)
-        return try perform(request, using: decoder)
+        return try perform(request, using: decoder, authorization: authorization)
     }
 
     func post<Body: Content, T: Content>(body: Body, to uri: String, encoder: JSONEncoder = JSONEncoder(), using decoder: JSONDecoder = JSONDecoder(), method: HTTPMethod = .POST, authorization: BasicAuthorization? = nil) throws -> Future<T> {
@@ -38,7 +36,7 @@ public extension Client {
         let data = try encoder.encode(body)
         request.body = HTTPBody(data: data)
         request.contentType = .json
-        return try perform(request, using: decoder)
+        return try perform(request, using: decoder, authorization: authorization)
     }
 
     func perform<T: Content>(_ request: HTTPRequest, using decoder: JSONDecoder = JSONDecoder(), authorization: BasicAuthorization? = nil) throws -> Future<T> {
@@ -54,6 +52,10 @@ public extension Client {
                     responseBody = String(data: data, encoding: .utf8)
                 }
                 throw GitHubError.invalidStatus(httpStatus: response.http.status.code, body: responseBody)
+            }
+
+            if T.self is Response.Empty.Type {
+                return self.container.future(Response.Empty() as! T)
             }
             let futureDecode = try response.content.decode(json: T.self, using: decoder)
             futureDecode.whenFailure { error in
