@@ -48,7 +48,7 @@ public class RegexMatcher {
         var matches = [String]()
         
         ranges.forEach {
-            matches.append(String(text.substring(with: $0)))
+            matches.append(String(text[$0]))
         }
         
         return matches

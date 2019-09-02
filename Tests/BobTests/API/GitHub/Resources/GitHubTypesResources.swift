@@ -186,3 +186,18 @@ extension GitHub.Repos.Commit: Response {
     }
     """.data(using: .utf8)!
 }
+
+extension GitHub.Repos.Tag: Response {
+    static var response: Data = """
+      {
+        "name": "1.3.3",
+        "zipball_url": "https://api.github.com/repos/n26/bob/zipball/1.3.3",
+        "tarball_url": "https://api.github.com/repos/n26/bob/tarball/1.3.3",
+        "commit": {
+          "sha": "e03cdfe5c5c94cee32e49851e765a75bdcebfbdc",
+          "url": "https://api.github.com/repos/n26/bob/commits/e03cdfe5c5c94cee32e49851e765a75bdcebfbdc"
+        },
+        "node_id": "MDM6UmVmODQwOTI4OTc6MS4zLjM="
+      }
+    """.data(using: .utf8)!
+}

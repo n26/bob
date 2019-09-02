@@ -46,4 +46,8 @@ class GitHubTypesDecodingTests: XCTestCase {
     func test_repoCommit_decodes() throws {
         AssertDecodes(model: GitHub.Repos.Commit.self)
     }
+
+    func test_tag_decodes() throws {
+        AssertDecodes(model: GitHub.Repos.Tag.self)
+    }
 }

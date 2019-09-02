@@ -101,6 +101,10 @@ public class GitHub {
         return try get(uri(at: "/contents/\(path)?ref=" + branch))
     }
 
+    public func tags() throws -> Future<[GitHub.Repos.Tag]> {
+        return try get(uri(at: "/tags"))
+    }
+
     /// Returns a list of commits in reverse chronological order
     ///
     /// - Parameters:

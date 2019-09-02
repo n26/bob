@@ -82,7 +82,7 @@ public extension GitHub {
         let treeSHA: Git.Tree.SHA
     }
 
-    public func currentState(on branch: BranchName) throws -> Future<CurrentState> {
+    func currentState(on branch: BranchName) throws -> Future<CurrentState> {
         return try assertBranchExists(branch).flatMap { _ -> Future<CurrentState> in
             let commitSha = try self.currentCommitSHA(on: branch)
 
@@ -109,7 +109,7 @@ public extension GitHub {
         - Creates a new tree with the update files
         - Creates a new commit
     */
-    public func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws -> Future<GitHub.Git.Reference> {
+    func newCommit(updatingItemsWith updater: ItemUpdater, on branch: BranchName, by author: Author, message: String) throws -> Future<GitHub.Git.Reference> {
         // Get the repo state
         let respositoryState = try currentState(on: branch)
 

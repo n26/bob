@@ -192,7 +192,28 @@ extension GitHub {
                 case htmlUrl
                 case details = "commit"
             }
+        }
 
+        /// https://developer.github.com/v3/repos/#list-tags
+        public struct Tag: Content {
+            public let name: String
+            public let commit: Commit.SHA
+
+            enum CodingKeys: String, CodingKey {
+                case name
+                case commit
+            }
+            enum CommitKeys: String, CodingKey {
+                case sha
+            }
+
+            public init(from decoder: Decoder) throws {
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                name = try container.decode(String.self, forKey: .name)
+
+                let commitContainer = try container.nestedContainer(keyedBy: CommitKeys.self, forKey: .commit)
+                commit = try commitContainer.decode(String.self, forKey: .sha)
+            }
         }
 
         public enum GitContent: Content {

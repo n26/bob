@@ -21,7 +21,7 @@ import Foundation
 import Vapor
 
 public extension GitHub {
-    public func branchExists(_ branch: BranchName) throws -> Future<(branchExists: Bool, possibleMatches: [Branch])> {
+    func branchExists(_ branch: BranchName) throws -> Future<(branchExists: Bool, possibleMatches: [Branch])> {
         return try self.branches().map { branches -> (branchExists: Bool, possibleMatches: [Branch])  in
             var branchExists = false
             let possibleMatches = branches.filter { remoteBranch -> Bool in
@@ -51,7 +51,7 @@ public extension GitHub {
          }
          ```
     */
-    public func assertBranchExists(_ branch: BranchName) throws -> Future<Void> {
+    func assertBranchExists(_ branch: BranchName) throws -> Future<Void> {
         return try branchExists(branch).map { result  in
             if !result.branchExists {
                 throw GitHubError.invalidBranch(name: branch)
