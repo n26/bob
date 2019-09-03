@@ -54,10 +54,10 @@ public class TravisCI {
     }
     
     private let config: Configuration
-    private let app: Application
+    private let container: Container
 
     public var worker: Worker {
-        return app
+        return container
     }
 
     private lazy var headers: HTTPHeaders = {
@@ -72,9 +72,9 @@ public class TravisCI {
     /// Initializes the object with provided configuration
     ///
     /// - Parameter config: Configuration to use
-    public init(config: Configuration, app: Application) {
+    public init(config: Configuration, container: Container) {
         self.config = config
-        self.app = app
+        self.container = container
     }
     
     /// Triggers a TravisCI job executing a script named `script`
@@ -94,7 +94,7 @@ public class TravisCI {
             ]
         ]
 
-        let futureResponse = try app.client().post(uri, headers: headers) { request in
+        let futureResponse = try container.client().post(uri, headers: headers) { request in
             request.http.body = HTTPBody(data: try body.makeJSON())
         }
 

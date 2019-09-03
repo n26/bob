@@ -65,16 +65,16 @@ public class GitHub {
     
     private let authorization: BasicAuthorization
     private let repoUrl: String
-    private let app: Application
+    private let container: Container
 
     public var worker: Worker {
-        return app
+        return container
     }
 
-    public init(config: Configuration, app: Application) {
+    public init(config: Configuration, container: Container) {
         self.authorization = BasicAuthorization(username: config.username, password: config.personalAccessToken)
         self.repoUrl = config.repoUrl
-        self.app = app
+        self.container = container
     }
     
     private func uri(at path: String) -> String {
@@ -175,10 +175,10 @@ public class GitHub {
     // MARK: - Private
 
     private func get<T: Content>(_ uri: String) throws -> Future<T> {
-        return try app.client().get(uri, using: GitHub.decoder, authorization: authorization)
+        return try container.client().get(uri, using: GitHub.decoder, authorization: authorization)
     }
 
     private func post<Body: Content, T: Content>(body: Body, to uri: String, patch: Bool = false ) throws -> Future<T> {
-        return try app.client().post(body: body, to: uri, encoder: GitHub.encoder, using: GitHub.decoder, method: patch ? .PATCH : .POST, authorization: authorization)
+        return try container.client().post(body: body, to: uri, encoder: GitHub.encoder, using: GitHub.decoder, method: patch ? .PATCH : .POST, authorization: authorization)
     }
 }
