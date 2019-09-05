@@ -298,3 +298,51 @@ extension GitHub {
         }
     }
 }
+
+extension GitHub {
+
+    public struct User: Content {
+        let login: String
+        let id: Int
+    }
+
+    public struct Pulls {
+
+        public struct Pull: Content {
+            public typealias ID = Int
+
+            public struct Label: Content {
+                let name: String
+            }
+            public enum State: String, Content {
+                case open
+                case closed
+            }
+
+            public let title: String
+            public let number: ID
+            public let state: State
+            public let labels: [Label]
+            public let htmlUrl: URL
+            public let createdAt: Date
+        }
+
+        public struct Review: Content {
+
+            public enum State: String, Content {
+                case commented = "COMMENTED"
+                case approved = "APPROVED"
+                case changesRequested = "CHANGES_REQUESTED"
+            }
+
+            public let user: User
+            public let state: State
+            public let submittedAt: Date
+        }
+
+        public struct Comment: Content {
+            public let user: User
+            public let createdAt: Date
+        }
+    }
+}

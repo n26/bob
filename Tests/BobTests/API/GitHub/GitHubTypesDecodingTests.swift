@@ -50,4 +50,12 @@ class GitHubTypesDecodingTests: XCTestCase {
     func test_tag_decodes() throws {
         AssertDecodes(model: GitHub.Repos.Tag.self)
     }
+
+    func test_pulls_decodes() throws {
+        AssertDecodes(model: GitHub.Pulls.Pull.self)
+    }
+
+    func test_pullsReview_decodes() throws {
+        AssertDecodes(model: GitHub.Pulls.Review.self)
+    }
 }

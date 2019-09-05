@@ -172,6 +172,19 @@ public class GitHub {
         return try post(body: body, to: uri(at: "/git/refs/heads/" + branch), patch: true)
     }
 
+    // MARK: - Pull Request APIs
+    public func pulls(state: GitHub.Pulls.Pull.State = .open) throws -> Future<[GitHub.Pulls.Pull]> {
+        return try self.get(uri(at: "/pulls?state" + state.rawValue))
+    }
+
+    public func pullReviews(id: GitHub.Pulls.Pull.ID) throws -> Future<[GitHub.Pulls.Review]> {
+        return try self.get(uri(at: "/pulls/\(id)/reviews"  ))
+    }
+
+    public func pullComments(id: GitHub.Pulls.Pull.ID) throws -> Future<[GitHub.Pulls.Comment]> {
+        return try self.get(uri(at: "/pulls/\(id)/comments"  ))
+    }
+
     // MARK: - Private
 
     private func get<T: Content>(_ uri: String) throws -> Future<T> {
