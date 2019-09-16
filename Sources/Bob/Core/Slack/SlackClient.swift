@@ -35,6 +35,17 @@ extension Client {
 
         return get(components.url!, headers: headers, beforeSend: { _ in })
     }
+
+    func loadSlackRealTimeURL(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws -> Future<URL> {
+        return try loadRealtimeApi(token: token).flatMap { response in
+            return try response.content.decode(SlackStartResponse.self)
+        }.map(to: URL.self) { slackResponse in
+            guard let url = slackResponse.url else {
+                throw "Slack RTM response does not containt a URL. Is your slack token correct?"
+            }
+            return url
+        }
+    }
 }
 
 class SlackClient {
@@ -48,10 +59,9 @@ class SlackClient {
     func connect(onMessage: @escaping (_ message: String, _ sender: MessageSender) -> Void) throws {
         print("Starting Slack connection")
 
-        let response = try app.client().loadRealtimeApi(token: token).wait()
-        let slackResponse = try response.content.decode(SlackStartResponse.self).wait()
+        let url = try app.client().loadSlackRealTimeURL(token: token).wait()
 
-        _ = try app.client().webSocket(slackResponse.url).flatMap { ws -> Future<Void> in
+        _ = try app.client().webSocket(url).flatMap { ws -> Future<Void> in
             ws.onText { ws, text in
                 print("[event] - \(text)")
 
