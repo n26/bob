@@ -21,7 +21,7 @@ import Foundation
 
 // https://api.slack.com/methods/rtm.start
 struct SlackStartResponse: Decodable {
-    let url: URL
+    let url: URL?
 }
 
 enum SlackMessageType: String, Encodable {
