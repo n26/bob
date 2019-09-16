@@ -20,6 +20,9 @@
 import Foundation
 
 class CommandFactory {
+    enum CommandFactoryError: Error {
+        case register(String)
+    }
     
     internal private(set) var commands: [Command] = []
     init(commands: [Command]) {
@@ -28,8 +31,7 @@ class CommandFactory {
     
     func register(_ command: Command) throws {
         let existingCommand = self.command(withName: command.name)
-        guard existingCommand == nil else { throw "Command with name `\(command.name)` already exists: \(existingCommand!)" }
-        
+        guard existingCommand == nil else { throw CommandFactoryError.register("Command with name `\(command.name)` already exists: \(existingCommand!)") }
         self.commands.append(command)
     }
     
@@ -37,5 +39,4 @@ class CommandFactory {
         let lowercasedName = name.lowercased()
         return self.commands.first(where: { $0.name.lowercased() == lowercasedName })
     }
-    
 }

@@ -18,8 +18,8 @@
  */
 
 import Foundation
-import Vapor
 import HTTP
+import Vapor
 
 /// Struct representing a script
 /// Additional config can also be provided
@@ -34,29 +34,13 @@ public struct Script {
 }
 
 extension Dictionary where Key: ExpressibleByStringLiteral, Value: Any {
-    func makeJSON() throws -> JSON {
-        var result: [String: NodeRepresentable] = [:]
-        for (key, value) in self {
-            guard let keyString = key as? String else { throw "Key is not a string" }
-            if let stringValue = value as? String {
-                result.updateValue(stringValue, forKey: keyString)
-            } else if let dictValue = value as? [String: Any] {
-                result.updateValue(try dictValue.makeJSON(), forKey: keyString)
-            } else if let arrayValue = value as? [[String: Any]] {
-                let array = try arrayValue.map({ try $0.makeJSON() })
-                result.updateValue(try JSON(node: array), forKey: keyString)
-            } else {
-                throw "Unsupported type: \(value)"
-            }
-        }
-        return try JSON(node: result)
+    func makeJSON() throws -> Data {
+        return try JSONSerialization.data(withJSONObject: self, options: [])
     }
 }
 
 /// Used for communication with TravisCI api
 public class TravisCI {
-    
-    
     /// Configuration needed for authentication with the api
     public struct Configuration {
         /// Url of the repo. Along the lines of https://api.travis-ci.com/repo/{owner%2Frepo}
@@ -70,42 +54,52 @@ public class TravisCI {
     }
     
     private let config: Configuration
-    private let drop: Droplet
+    private let container: Container
+
+    public var worker: Worker {
+        return container
+    }
+
+    private lazy var headers: HTTPHeaders = {
+        var headers = HTTPHeaders()
+        headers.add(name: HTTPHeaderName.accept, value: "")
+        headers.add(name: HTTPHeaderName.authorization, value: "token \(config.token)")
+        headers.add(name: "Travis-API-Version", value: "3")
+        headers.add(name: HTTPHeaderName.contentType, value: "application/json")
+        return headers
+    }()
+
     /// Initializes the object with provided configuration
     ///
     /// - Parameter config: Configuration to use
-    public init(config: Configuration, droplet: Droplet) {
+    public init(config: Configuration, container: Container) {
         self.config = config
-        self.drop = droplet
+        self.container = container
     }
-    
     
     /// Triggers a TravisCI job executing a script named `script`
     ///
     /// - Parameters:
     ///   - script: Script to execute. The script should be in the repo
     ///   - branch: Branch to use when executing the script
-    public func execute(_ script: Script, on branch: BranchName) throws {
+    public func execute(_ script: Script, on branch: String) throws -> Future<Bool> {
         let uri = self.config.repoUrl + "/requests"
         var config = script.config
         config["script"] = script.content
-        
-        let parameters = try JSON(node: [
-            "request": try JSON(node: [
-                "branch": branch.name,
-                "config": try config.makeJSON()
-                ])
-            ])
-        
-        let request = Request(method: .post, uri: uri, body: parameters.makeBody())
-        request.headers[HeaderKey("Authorization")] = "token " + self.config.token
-        request.headers[HeaderKey("Travis-API-Version")] = "3"
-        request.headers[HeaderKey("Content-Type")] = "application/json"
-        
-        let response = try self.drop.client.respond(to: request)
-        if !response.status.isSuccessfulRequest {
-            throw "Error: `" + request.uri.description + "` - " + response.status.reasonPhrase
+
+        let body: [String: Any] = [
+            "request": [
+                "branch": branch,
+                "config": config
+            ]
+        ]
+
+        let futureResponse = try container.client().post(uri, headers: headers) { request in
+            request.http.body = HTTPBody(data: try body.makeJSON())
+        }
+
+        return futureResponse.map { response in
+            return response.http.status.isSuccessfulRequest
         }
     }
-    
 }

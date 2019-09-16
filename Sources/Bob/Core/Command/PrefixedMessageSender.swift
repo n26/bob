@@ -32,5 +32,4 @@ class PrefixedMessageSender: MessageSender {
         let prefixedMessage = "*" + self.prefix + "* " + message
         self.sender.send(prefixedMessage)
     }
-    
 }

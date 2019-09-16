@@ -20,14 +20,11 @@
 import Foundation
 
 class VersionUpdater: ItemUpdater {
-    
     private let plistPaths: [String]
-    private let version: String
-    private let buildNumber: String
-    init(plistPaths: [String], version: String, buildNumber: String) {
+    private let version: Version
+    init(plistPaths: [String], version: Version) {
         self.plistPaths = plistPaths
         self.version = version
-        self.buildNumber = buildNumber
     }
     
     func itemsToUpdate(from items: [TreeItem]) -> [TreeItem] {
@@ -36,8 +33,8 @@ class VersionUpdater: ItemUpdater {
     
     func update(_ item: TreeItem, content: String) throws -> String {
         let matcher = RegexMatcher(text: content)
-        matcher.replace(stringMatching: PListHelpers.versionRegexString, with: PListHelpers.replacementString(for: PListHelpers.versionKey, value: self.version))
-        matcher.replace(stringMatching: PListHelpers.buildNumberRegexString, with: PListHelpers.replacementString(for: PListHelpers.buildNumberKey, value: self.buildNumber))
+        matcher.replace(stringMatching: PListHelpers.versionRegexString, with: PListHelpers.replacementString(for: PListHelpers.versionKey, value: version.version))
+        matcher.replace(stringMatching: PListHelpers.buildNumberRegexString, with: PListHelpers.replacementString(for: PListHelpers.buildNumberKey, value: version.build.value))
         return matcher.result
     }
 }

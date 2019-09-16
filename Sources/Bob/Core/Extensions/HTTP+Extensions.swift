@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 N26 GmbH.
+ * Copyright (c) 2019 N26 GmbH.
  *
  * This file is part of Bob.
  *
@@ -17,9 +17,13 @@
  * along with Bob.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import Foundation
+import NIOHTTP1
 
-struct ExecutableCommand {
-    let command: Command
-    let parameters: [String]
+public extension HTTPResponseStatus {
+    var isSuccessfulRequest: Bool {
+        switch self {
+        case .ok, .created, .accepted, .nonAuthoritativeInformation, .noContent, .resetContent, .partialContent: return true
+        default: return false
+        }
+    }
 }

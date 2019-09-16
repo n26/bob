@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 N26 GmbH.
+ * Copyright (c) 2019 N26 GmbH.
  *
  * This file is part of Bob.
  *
@@ -17,9 +17,22 @@
  * along with Bob.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-import Foundation
+import XCTest
+@testable import Bob
 
-struct ExecutableCommand {
-    let command: Command
-    let parameters: [String]
+
+class PListHelpersTests: XCTestCase {
+
+    func test_parseVersion_givenValidString_returnsVersion() throws {
+        let plist = """
+            <key>CFBundleShortVersionString</key>
+            <string>1.0</string>
+            <key>CFBundleVersion</key>
+            <string>1</string>
+        """
+        let (version, build) = try PListHelpers.version(fromPlistContent: plist)
+
+        XCTAssertEqual(version, "1.0")
+        XCTAssertEqual(build, "1")
+    }
 }

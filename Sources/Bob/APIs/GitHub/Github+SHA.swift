@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017 N26 GmbH.
+ * Copyright (c) 2019 N26 GmbH.
  *
  * This file is part of Bob.
  *
@@ -20,26 +20,18 @@
 import Foundation
 import Vapor
 
-extension WebSocket {
-    func send<T: Encodable>(message: T) throws {
-        let encoder = JSONEncoder()
-        let jsonData = try encoder.encode(message)
-        if let jsonString = String(data: jsonData, encoding: .utf8) {
-            send(jsonString)
+extension GitHub {
+    /// Helper methods that returns the latest commit sha on the specified branch
+    public func currentCommitSHA(on branch: GitHub.Repos.Branch.BranchName) throws -> Future<GitHub.Repos.Commit.SHA> {
+        return try self.branch(branch).map(to: String.self) { branchDetail in
+            return branchDetail.commit.sha
         }
     }
-}
 
-class SlackMessageSender: MessageSender {
-    private let socket: WebSocket
-    private let channel: String
-    init(socket: WebSocket, channel: String) {
-        self.socket = socket
-        self.channel = channel
-    }
-    
-    func send(_ message: String) {
-        let slackMessage = SlackMessage(to: self.channel, text: message)
-        try! self.socket.send(message: slackMessage)
+    /// Helper methods that returns the tree sha for the specified commit sha
+    public func treeSHA(forCommitSHA sha: GitHub.Git.Commit.SHA) throws -> Future<GitHub.Git.Tree.SHA> {
+        return try self.gitCommit(sha: sha).map(to: GitHub.Git.Tree.SHA.self) { singleCommit   in
+            return singleCommit.tree.sha
+        }
     }
 }

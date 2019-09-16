@@ -21,8 +21,7 @@ import Foundation
 import Vapor
 
 public class Bob {
-    
-    static let version: String = "1.3.2"
+    static let version: String = "2.0.0"
     
     /// Struct containing all properties needed for Bob to function
     public struct Configuration {
@@ -44,14 +43,13 @@ public class Bob {
     /// Initializer
     ///
     /// - Parameter configuration: Configuration for setup
-    /// - Parameter droplet: Droplet
-    public init(config: Configuration, droplet: Droplet) {
-        self.slackClient = SlackClient(token: config.slackToken, droplet: droplet)
+    /// - Parameter app: Application
+    public init(config: Configuration, app: Application) {
+        self.slackClient = SlackClient(token: config.slackToken, app: app)
         self.factory = CommandFactory(commands: [HelloCommand(), VersionCommand()])
         self.processor = CommandProcessor(factory: self.factory)
         self.executor = CommandExecutor()
     }
-    
     
     /// Registers commands so they become available for usage
     ///
@@ -63,13 +61,11 @@ public class Bob {
         }
     }
     
-    
     /// Starts listening to messages and processing them
     ///
     /// - Throws: Throws an error if it occurs
     public func start() throws {
-        try self.slackClient.connect { (message, sender) in
-            
+        try self.slackClient.connect { message, sender in
             do {
                 let commands = try self.processor.executableCommands(from: message)
                 if commands.count > 0 {
@@ -88,19 +84,14 @@ public class Bob {
                     sender.send(error.userFriendlyMessage)
                 }
             }
-            
-            
         }
     }
-    
 }
 
 fileprivate extension CommandFactory {
-    
     var availableCommands: String {
         var string = "Available commands:"
-        self.commands.forEach({ string += "\n• " + $0.name})
+        self.commands.forEach({ string += "\n• " + $0.name })
         return string
     }
-    
 }

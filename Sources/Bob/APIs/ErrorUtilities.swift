@@ -20,7 +20,6 @@
 import Foundation
 
 extension Error {
-    
     var userFriendlyMessage: String {
         if let string = self as? String {
             return string
@@ -28,7 +27,6 @@ extension Error {
             return self.localizedDescription
         }
     }
-    
 }
 
 extension String: Error {}

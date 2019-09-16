@@ -22,7 +22,6 @@ import Vapor
 
 // Command used to bump up build numbers directly on GitHub
 public class BumpCommand {
-    
     struct Constants {
         static let branchSpecifier: String = "-b"
     }
@@ -31,6 +30,11 @@ public class BumpCommand {
     fileprivate let plistPaths: [String]
     fileprivate let message: String
     fileprivate let author: Author
+
+    /// Source of the version we will bump
+    fileprivate var versionPlist: String {
+        return self.plistPaths[0]
+    }
     /// Initializer
     ///
     /// - Parameters:
@@ -44,25 +48,31 @@ public class BumpCommand {
         self.message = message
         self.author = author
     }
+
+    private func fetchVersion(plistFile: TreeItem) throws -> Future<Version> {
+        return try gitHub.gitBlob(sha: plistFile.sha).map(to: Version.self) { blob in
+            guard let content = blob.string else { throw "Could not convert plist file content to String" }
+            return try Version(fromPlistContent: content)
+        }
+    }
 }
 
 extension BumpCommand: Command {
-    
     public var name: String {
         return "bump"
     }
-    
+
     public var usage: String {
         return "Bump up build number by typing `bump`. Specify a branch by typing `\(Constants.branchSpecifier) {branch}`."
     }
-    
+
     public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
         guard plistPaths.count > 0 else {
             throw "Failed to bump. Misconfiguration of the `bump` command. Missing Plist file paths."
         }
-        
+
         var params = parameters
-        
+
         var specifiedBranch: BranchName?
         if let branchSpecifierIndex = params.index(where: { $0 == Constants.branchSpecifier }) {
             guard params.count > branchSpecifierIndex + 1 else { throw "Branch name not specified after `\(Constants.branchSpecifier)`" }
@@ -70,61 +80,32 @@ extension BumpCommand: Command {
             params.remove(at: branchSpecifierIndex + 1)
             params.remove(at: branchSpecifierIndex)
         }
-        
-        guard let branch = specifiedBranch else { throw "Please specify a branch" }
-        
-        sender.send("One sec...")
-        let versionFiles = try self.gitHub.currentState(on: branch).items.filter { $0.path == plistPaths[0] }
-        
-        guard let versionAndBuildNumber = try versionFiles.first.map ({ item -> (String, String) in
-            
-            let content = try self.gitHub.content(forBlobWith: item.sha)
-            
-            let matcher = RegexMatcher(text: content)
-            var output = ("","")
-            
-            let versions = matcher.matches(stringMatching: PListHelpers.versionRegexString)
-            if let version = versions.first {
-                let versionString = PListHelpers.extractStringValue(from: version)
-                output.0 = versionString
-            } else {
-                throw "Failed to bump version. Could not find version number in Plist file."
-            }
-            
-            let buildNumbers = matcher.matches(stringMatching: PListHelpers.buildNumberRegexString)
-            
-            if let first = buildNumbers.first {
-                let buildNumberText = PListHelpers.extractStringValue(from: first)
-                output.1 = buildNumberText
-            } else {
-                throw "Failed to bump version. Could not find build number in Plist file."
-            }
-            
-            return output
-        }) else {
-            sender.send("Failed to extract build number.")
-            return
-        }
-        
-        let newBuildNumber: String
-        if let numericBuildNumber = Int(versionAndBuildNumber.1) {
-            newBuildNumber = String(numericBuildNumber + 1)
-        } else if let numericBuildString = RegexMatcher(text: versionAndBuildNumber.1).matches(stringMatching: "[0-9]{1,}$").last,
-            let numericBuildNumber = Int(numericBuildString) {
-            let prefix = versionAndBuildNumber.1.dropLast(numericBuildString.count)
-            newBuildNumber = prefix + String(numericBuildNumber + 1)
-        } else {
-            sender.send("Could not bump up build number because it's not numeric. Current value is *\(versionAndBuildNumber.1)*.")
-            return
-        }
 
-        let align = VersionUpdater(plistPaths: plistPaths, version: versionAndBuildNumber.0, buildNumber: newBuildNumber)
-        
-        let versionString = "\(versionAndBuildNumber.0) (\(newBuildNumber))"
-        let message = self.message.replacingOccurrences(of: "<version>", with: versionString)
-        
-        try self.gitHub.newCommit(updatingItemsWith: align, on: branch, by: self.author, message: message)
-        
-        sender.send("Done. Build number bumped up. New version is \(versionAndBuildNumber.0) (\(newBuildNumber)).")
+        guard let branch = specifiedBranch else { throw "Please specify a branch" }
+
+        sender.send("One sec...")
+
+        _ = try gitHub.currentState(on: branch).map(to: TreeItem.self) { currentState in
+            return try currentState.items.firstItem(named: self.versionPlist)
+        }.flatMap { treeItem in
+            return try self.fetchVersion(plistFile: treeItem)
+        }.flatMap(to: GitHub.Git.Reference.self) { version in
+            let bumpedVersion = try version.bump()
+            let align = VersionUpdater(plistPaths: self.plistPaths, version: bumpedVersion)
+            let message = version.commitMessage(template: self.message)
+
+            return try self.gitHub.newCommit(updatingItemsWith: align, on: branch, by: self.author, message: message)
+        }.map { _ in
+            sender.send("ok")
+        }.catch { error in
+            sender.send("Command failed with error ```\(error)```")
+        }
+    }
+}
+
+private extension Array where Element == TreeItem {
+    func firstItem(named name: String) throws -> TreeItem {
+        guard let item = filter({ $0.path == name }).first else { throw "TreeItem '\(name)' not found" }
+        return item
     }
 }
