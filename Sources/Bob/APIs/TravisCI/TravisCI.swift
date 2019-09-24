@@ -39,6 +39,32 @@ extension Dictionary where Key: ExpressibleByStringLiteral, Value: Any {
     }
 }
 
+public struct BuildParams {
+    public enum Config {
+        case script(Script)
+        case env([String: Any])
+
+        func dict() -> [String: Any] {
+            switch self {
+            case .script(let script):
+                var config = script.config
+                config["script"] = script.content
+                return config
+            case .env(let env):
+                return env
+            }
+        }
+    }
+
+    let branch: String
+    let config: Config
+
+    public init(branch: String, config: Config) {
+        self.branch = branch
+        self.config = config
+    }
+}
+
 /// Used for communication with TravisCI api
 public class TravisCI {
     /// Configuration needed for authentication with the api
@@ -62,7 +88,7 @@ public class TravisCI {
 
     private lazy var headers: HTTPHeaders = {
         var headers = HTTPHeaders()
-        headers.add(name: HTTPHeaderName.accept, value: "")
+        headers.add(name: HTTPHeaderName.accept, value: "application/json")
         headers.add(name: HTTPHeaderName.authorization, value: "token \(config.token)")
         headers.add(name: "Travis-API-Version", value: "3")
         headers.add(name: HTTPHeaderName.contentType, value: "application/json")
@@ -91,6 +117,26 @@ public class TravisCI {
             "request": [
                 "branch": branch,
                 "config": config
+            ]
+        ]
+
+        let futureResponse = try container.client().post(uri, headers: headers) { request in
+            request.http.body = HTTPBody(data: try body.makeJSON())
+        }
+
+        return futureResponse.map { response in
+            return response.http.status.isSuccessfulRequest
+        }
+    }
+
+    public func execute(title: String, buildParameters: BuildParams) throws -> Future<Bool> {
+        let uri = self.config.repoUrl + "/requests"
+
+        let body = [
+            "request": [
+                "message": title,
+                "branch": buildParameters.branch,
+                "config": buildParameters.config.dict()
             ]
         ]
 
