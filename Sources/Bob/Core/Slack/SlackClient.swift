@@ -91,31 +91,35 @@ class SlackClient {
 
     private func createConnection() throws {
         let logger = try app.make(Logger.self)
-        logger.info("Starting Slack connection")
 
-        let url = try app.client().loadSlackRealTimeURL(token: token).wait()
-        let _ = try app.client().webSocket(url).flatMap { ws -> Future<Void> in
+        logger.info("Requesting RTM url")
+        try app.client().loadSlackRealTimeURL(token: token).map { url in
+            logger.info("Connecting to RTM url")
+            let _ = try self.app.client().webSocket(url).flatMap { ws -> Future<Void> in
 
-            ws.onText { ws, text in
-                self.onText(ws: ws, text: text, logger: logger)
-            }
+                ws.onText { ws, text in
+                    self.onText(ws: ws, text: text, logger: logger)
+                }
 
-            ws.onCloseCode { code in
-                logger.error("Closed \(code)")
-            }
+                ws.onCloseCode { code in
+                    logger.error("Closed \(code)")
+                }
 
-            ws.onError { ws, error in
-                logger.error("ws onError: \(error)")
+                ws.onError { ws, error in
+                    logger.error("ws onError: \(error)")
+                    self.reconnectWithTimeout()
+                }
+                return ws.onClose
+            }.map {
+                logger.info("ws close")
                 self.reconnectWithTimeout()
             }
-            return ws.onClose
-        }.map {
-            logger.info("ws close")
-            self.reconnectWithTimeout()
-        }
-        .catch { error in
-            logger.error("ws error: \(error)")
-            self.reconnectWithTimeout()
+            .catch { error in
+                logger.error("ws error: \(error)")
+                self.reconnectWithTimeout()
+            }
+        }.catch { error in
+            logger.error("Failed to request RTM url: \(error)")
         }
         logger.info("Connected to Slack")
     }
