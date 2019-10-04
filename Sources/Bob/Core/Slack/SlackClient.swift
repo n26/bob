@@ -49,35 +49,139 @@ extension Client {
 }
 
 class SlackClient {
+
+    // https://api.slack.com/rtm
+    enum Event {
+        fileprivate enum RawType: String {
+            /// https://api.slack.com/events/message
+            case message
+
+            /// https://api.slack.com/events/goodbye
+            case goodbye
+        }
+
+        struct Message: Decodable {
+            let text: String
+            let channel: String
+            let user: String
+        }
+
+        case message(Message)
+        case goodbye
+    }
+
     private let token: String
     private let app: Application
-    init(token: String, app: Application) {
+    private let reconnectAfter: TimeInterval
+    private let logger: Logger
+
+    private var onMessage: ((_ message: String, _ sender: MessageSender) -> Void)?
+
+    init(token: String, app: Application, reconnectAfter: TimeInterval = 60) {
         self.token = token
         self.app = app
+        self.reconnectAfter = reconnectAfter
+        self.logger = try! app.make(Logger.self)
     }
     
     func connect(onMessage: @escaping (_ message: String, _ sender: MessageSender) -> Void) throws {
-        print("Starting Slack connection")
+        self.onMessage = onMessage
+        try createConnection()
+    }
 
-        let url = try app.client().loadSlackRealTimeURL(token: token).wait()
+    private func createConnection() throws {
+        let logger = try app.make(Logger.self)
 
-        _ = try app.client().webSocket(url).flatMap { ws -> Future<Void> in
-            ws.onText { ws, text in
-                print("[event] - \(text)")
+        logger.info("Requesting RTM url")
+        try app.client().loadSlackRealTimeURL(token: token).map { url in
+            logger.info("Connecting to RTM url")
+            let _ = try self.app.client().webSocket(url).flatMap { ws -> Future<Void> in
 
-                guard
-                    let data = text.data(using: .utf8),
-                    let event = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
-                    let channel = event?["channel"] as? String,
-                    let text = event?["text"] as? String else {
-                    return
+                ws.onText { ws, text in
+                    self.onText(ws: ws, text: text, logger: logger)
                 }
 
-                let sender = SlackMessageSender(socket: ws, channel: channel)
-                onMessage(text, sender)
-            }
+                ws.onCloseCode { code in
+                    logger.error("Closed \(code)")
+                }
 
-            return ws.onClose
+                ws.onError { ws, error in
+                    logger.error("ws onError: \(error)")
+                    self.reconnectWithTimeout()
+                }
+                return ws.onClose
+            }.map {
+                logger.info("ws close")
+                self.reconnectWithTimeout()
+            }
+            .catch { error in
+                logger.error("ws error: \(error)")
+                self.reconnectWithTimeout()
+            }
+        }.catch { error in
+            logger.error("Failed to request RTM url: \(error)")
+        }
+        logger.info("Connected to Slack")
+    }
+
+    private func reconnectWithTimeout() {
+        logger.info("Reconnecting after \(reconnectAfter)s")
+        app.eventLoop.scheduleTask(in: TimeAmount.seconds(TimeAmount.Value(reconnectAfter))) {
+            try self.createConnection()
+        }
+    }
+
+    // MARK: - Event handling
+    private  func onText(ws: WebSocket, text: String, logger: Logger) {
+        logger.debug("[event] - \(text)")
+
+        do {
+            guard let event = try self.event(fromText: text) else { return }
+
+            switch event {
+            case .message(let message):
+                let sender = SlackMessageSender(socket: ws, channel: message.channel)
+                onMessage?(message.text, sender)
+            case .goodbye:
+                logger.info("Received goodbye event. Closing connection")
+                ws.close()
+            }
+        } catch {
+            logger.info("Could not parse Slack event: \(error)")
+        }
+    }
+
+    // MARK: - Private Parsing
+
+    /// Parses a Event from a slack websocket message
+    /// - Parameter text: the slack json event
+    /// - returns: The Event or nil when the type is not one of Event.RawType
+    /// - throws: When a known even could not be parsed
+    private func event(fromText text: String) throws -> Event? {
+        guard let (rawType, data) = messageType(fromText: text) else {
+            return nil
+        }
+        return try event(rawType: rawType, from: data)
+
+    }
+    private func messageType(fromText text: String) -> (Event.RawType, Data)? {
+        guard
+            let data = text.data(using: .utf8),
+            let event = try? JSONSerialization.jsonObject(with: data, options: []) as? [String: Any],
+            let typeRaw = event?["type"] as? String,
+            let rawType = Event.RawType.init(rawValue: typeRaw) else {
+                return nil
+        }
+        return (rawType, data)
+    }
+
+    private func event(rawType: Event.RawType, from data: Data) throws -> Event {
+        let decoder = JSONDecoder()
+        switch rawType {
+        case .message:
+            return .message(try decoder.decode(Event.Message.self, from: data))
+        case .goodbye:
+            return .goodbye
         }
     }
 }
