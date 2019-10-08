@@ -36,15 +36,18 @@ extension Client {
         return get(components.url!, headers: headers, beforeSend: { _ in })
     }
 
-    func loadSlackRealTimeURL(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws -> Future<URL> {
-        return try loadRealtimeApi(token: token).flatMap { response in
-            return try response.content.decode(SlackStartResponse.self)
-        }.map(to: URL.self) { slackResponse in
-            guard let url = slackResponse.url else {
+    func loadSlackRealTimeURL(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws -> Future<SlackStartResponse.Success> {
+        let result = try loadRealtimeApi(token: token).flatMap(to: SlackStartResponse.Success.self) { response in
+
+            let slackResponse = try response.content.syncDecode(SlackStartResponse.self)
+
+            if !slackResponse.ok {
                 throw "Slack RTM response does not containt a URL. Is your slack token correct?"
             }
-            return url
+            return try response.content.decode(SlackStartResponse.Success.self)
         }
+        return result
+
     }
 }
 
@@ -93,12 +96,13 @@ class SlackClient {
         let logger = try app.make(Logger.self)
 
         logger.info("Requesting RTM url")
-        try app.client().loadSlackRealTimeURL(token: token).map { url in
+        try app.client().loadSlackRealTimeURL(token: token).map { slackResponse in
             logger.info("Connecting to RTM url")
-            let _ = try self.app.client().webSocket(url).flatMap { ws -> Future<Void> in
+
+            let _ = try self.app.client().webSocket(slackResponse.url).flatMap { ws -> Future<Void> in
 
                 ws.onText { ws, text in
-                    self.onText(ws: ws, text: text, logger: logger)
+                    self.onText(ws: ws, text: text, me: slackResponse.me, logger: logger)
                 }
 
                 ws.onCloseCode { code in
@@ -132,7 +136,7 @@ class SlackClient {
     }
 
     // MARK: - Event handling
-    private  func onText(ws: WebSocket, text: String, logger: Logger) {
+    private  func onText(ws: WebSocket, text: String, me: SlackStartResponse.Success.User, logger: Logger) {
         logger.debug("[event] - \(text)")
 
         do {
@@ -140,6 +144,10 @@ class SlackClient {
 
             switch event {
             case .message(let message):
+                guard message.user != me.id else {
+                    logger.warning("Ignoring message from another instance of myself: '\(message.text)'")
+                    return
+                }
                 let sender = SlackMessageSender(socket: ws, channel: message.channel)
                 onMessage?(message.text, sender)
             case .goodbye:
