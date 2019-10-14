@@ -111,8 +111,10 @@ class SlackClient {
 
                 ws.onError { ws, error in
                     logger.error("ws onError: \(error)")
-                    self.reconnectWithTimeout()
+                    ws.close()
                 }
+
+                logger.info("Connected to Slack")
                 return ws.onClose
             }.map {
                 logger.info("ws close")
@@ -125,7 +127,6 @@ class SlackClient {
         }.catch { error in
             logger.error("Failed to request RTM url: \(error)")
         }
-        logger.info("Connected to Slack")
     }
 
     private func reconnectWithTimeout() {
