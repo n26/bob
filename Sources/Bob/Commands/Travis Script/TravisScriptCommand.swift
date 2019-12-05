@@ -105,14 +105,25 @@ extension TravisScriptCommand: Command {
 
         _ = try self.assertGitHubBranchIfPossible(branch).flatMap {
             return try self.travis.execute(target.script, on: branch)
-        }.map { success  in
-            if success {
-                sender.send("Got it! Executing target *" + target.name + "* on branch *" + branch + "*")
-            } else {
-                sender.send("Executing target *" + target.name + "* on branch *" + branch + "* failed")
-            }
-        }.catch { error in
-            sender.send("Command failed with error ```\(error)```")
+        }.flatMap(to: TravisCI.Request.self) { response  in
+            sender.send("Got it! Executing target *" + target.name + "* success.")
+            return try self.travis.request(id: response.request.id)
+        }.flatMap { buildRequest in
+            return try self.travis.poll(requestId: buildRequest.id, until: { request -> TravisCI.Poll<TravisCI.Request.Complete> in
+                switch request.state {
+                case .pending:
+                    return .continue
+                case .complete(let completedRequest):
+                    return .stop(completedRequest)
+                }
+            })
+        }.map { completedRequest in
+            let urls = completedRequest.builds.map { self.travis.buildURL(from: $0) }
+            let message = urls.reduce("Build URL: ") { $0 + "\n \($1.absoluteString)" }
+            sender.send(message)
+        }
+        .catch { error in
+            sender.send("Executing target *" + target.name + "* failed: `\(error)`")
         }
     }
 
