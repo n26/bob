@@ -43,7 +43,7 @@ struct SlackStartResponse: Decodable {
 }
 
 enum SlackMessageType: String, Encodable {
-    case message = "message"
+    case message
 }
 
 struct SlackMessage: Encodable {

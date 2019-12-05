@@ -38,7 +38,6 @@ extension Client {
 
     func loadSlackRealTimeURL(token: String, simpleLatest: Bool = true, noUnreads: Bool = true) throws -> Future<SlackStartResponse.Success> {
         let result = try loadRealtimeApi(token: token).flatMap(to: SlackStartResponse.Success.self) { response in
-
             let slackResponse = try response.content.syncDecode(SlackStartResponse.self)
 
             if !slackResponse.ok {
@@ -47,12 +46,10 @@ extension Client {
             return try response.content.decode(SlackStartResponse.Success.self)
         }
         return result
-
     }
 }
 
 class SlackClient {
-
     // https://api.slack.com/rtm
     enum Event {
         fileprivate enum RawType: String {
@@ -99,8 +96,7 @@ class SlackClient {
         try app.client().loadSlackRealTimeURL(token: token).map { slackResponse in
             logger.info("Connecting to RTM url")
 
-            let _ = try self.app.client().webSocket(slackResponse.url).flatMap { ws -> Future<Void> in
-
+            _ = try self.app.client().webSocket(slackResponse.url).flatMap { ws -> Future<Void> in
                 ws.onText { ws, text in
                     self.onText(ws: ws, text: text, me: slackResponse.me, logger: logger)
                 }
@@ -169,7 +165,6 @@ class SlackClient {
             return nil
         }
         return try event(rawType: rawType, from: data)
-
     }
     private func messageType(fromText text: String) -> (Event.RawType, Data)? {
         guard

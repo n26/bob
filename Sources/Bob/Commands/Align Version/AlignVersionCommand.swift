@@ -22,7 +22,7 @@ import Vapor
 
 /// Command used to change the version and build numbers directly on GitHub
 public class AlignVersionCommand {
-    struct Constants {
+    enum Constants {
         static let defaultBuildNumber: String = "1"
         static let branchSpecifier: String = "-b"
     }

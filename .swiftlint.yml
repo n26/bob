@@ -4,6 +4,7 @@ disabled_rules:
  - force_cast 
  - force_try 
  - trailing_whitespace
+ - nesting
 
 analyzer_rules:
  - explicit_self
@@ -31,7 +32,7 @@ opt_in_rules:
 included:
  - Sources
 large_tuple: 5 
-line_length: 150
+line_length: 250
 type_body_length:
   warning: 300
   error: 400
@@ -39,10 +40,12 @@ file_length:
   warning: 500
   error: 1200
 type_name:
-  min_length: 4
+  min_length: 3
   max_length:
     warning: 40
     error: 50
+  excluded:
+    - ID
 identifier_name:
   min_length:
     error: 3
@@ -50,5 +53,11 @@ identifier_name:
     - id
     - up
     - i
+    - j
+    - m
+    - n
     - to
+    - ws
+    - me
+    - ok
 reporter: "xcode"

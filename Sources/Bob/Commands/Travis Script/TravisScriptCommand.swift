@@ -60,7 +60,7 @@ public class TravisScriptCommand {
 }
 
 extension TravisScriptCommand: Command {
-    struct Constants {
+    enum Constants {
         static let branchSpecifier: String = "-b"
     }
 

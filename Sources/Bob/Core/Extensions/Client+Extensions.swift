@@ -25,7 +25,6 @@ extension Response {
 }
 
 public extension Client {
-
     func get<T: Decodable>(_ uri: String, using decoder: JSONDecoder = JSONDecoder(), authorization: BasicAuthorization? = nil, headers: HTTPHeaders? = nil) throws -> Future<T> {
         var request = HTTPRequest(method: .GET, url: uri)
         if let headers = headers {
@@ -70,6 +69,5 @@ public extension Client {
             return self.container.future(Response.Empty() as! T)
         }
         return try response.content.decode(json: T.self, using: decoder)
-
     }
 }

@@ -7,7 +7,6 @@
 
 import Foundation
 
-
 /// The `InfoCommand` prints a list of key/values provided by `InfoProvider`
 /// It's meant to provide info about a running instance of Bob
 public class InfoCommand: Command {
@@ -18,14 +17,12 @@ public class InfoCommand: Command {
     public let name = "info"
 
     public init() {
-
     }
     public var usage: String {
         return "`info` prints information about the Bob instance"
     }
 
     public func execute(with parameters: [String], replyingTo sender: MessageSender) throws {
-
         let result = providers
             .map { "\($0.name): \($0.value)" }
             .reduce("") { $0 + $1 + "\n" }

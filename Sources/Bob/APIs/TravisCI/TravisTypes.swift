@@ -11,10 +11,8 @@ import Vapor
 public extension TravisCI {
     /// https://developer.travis-ci.com/resource/requests#Requests
     struct Requests: Codable {
-
         /// POST /requests
         public struct Response: Content {
-
             /// The travis POSTed Travis Request
             public struct Request: Content {
                 public typealias ID = Int
@@ -35,7 +33,6 @@ public extension TravisCI {
         We use the `State` enum here to have a type safe object
     */
     struct Request: Codable {
-
         public enum State {
             case pending
             case complete(Complete)
@@ -64,9 +61,8 @@ public extension TravisCI {
         public let stateRaw: String
         public let state: State
 
-        // MARK:-  Decodable
+        // MARK: - Decodable
         public init(from decoder: Decoder) throws {
-
             let container = try decoder.container(keyedBy: CodingKeys.self)
             id = try container.decode(ID.self, forKey: .id)
             stateRaw = try container.decode(String.self, forKey: .state)
@@ -79,7 +75,7 @@ public extension TravisCI {
             }
         }
 
-        // MARK:- Encodable
+        // MARK: - Encodable
         public func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(id, forKey: .id)
@@ -94,7 +90,6 @@ public extension TravisCI {
             }
         }
     }
-
 
     /// https://developer.travis-ci.com/resource/build#Build
     struct Build: Content {

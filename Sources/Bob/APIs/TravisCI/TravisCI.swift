@@ -76,7 +76,6 @@ public class TravisCI {
             return (repoUrl.removingPercentEncoding ?? repoUrl)
                 .replacingOccurrences(of: "api.", with: "")
                 .replacingOccurrences(of: "/repo", with: "")
-
         }
         /// Access token
         public let token: String
@@ -163,10 +162,8 @@ public class TravisCI {
 
     /// GET /request/{requestId}
     public func request(id: Request.ID) throws -> Future<TravisCI.Request> {
-
         return try get(uri(at: "/request/\(id)"))
     }
-
 
     public enum Poll<PollResult> {
         case `continue`

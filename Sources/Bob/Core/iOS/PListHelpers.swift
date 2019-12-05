@@ -7,7 +7,7 @@
 
 import Foundation
 
-class PListHelpers {
+enum PListHelpers {
     static let versionRegexString: String = "<key>CFBundleShortVersionString<\\/key>\\s*<string>(\\S+)<\\/string>"
     static let versionKey: String = "CFBundleShortVersionString"
     static let buildNumberRegexString: String = "<key>CFBundleVersion<\\/key>\\s*<string>(\\S+)<\\/string>"
