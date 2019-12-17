@@ -71,6 +71,12 @@ public class TravisCI {
     public struct Configuration {
         /// Url of the repo. Along the lines of https://api.travis-ci.com/repo/{owner%2Frepo}
         public let repoUrl: String
+
+        public var dashboardUrl: String {
+            return (repoUrl.removingPercentEncoding ?? repoUrl)
+                .replacingOccurrences(of: "api.", with: "")
+                .replacingOccurrences(of: "/repo", with: "")
+        }
         /// Access token
         public let token: String
         public init(repoUrl: String, token: String) {
@@ -108,7 +114,7 @@ public class TravisCI {
     /// - Parameters:
     ///   - script: Script to execute. The script should be in the repo
     ///   - branch: Branch to use when executing the script
-    public func execute(_ script: Script, on branch: String) throws -> Future<Bool> {
+    public func execute(_ script: Script, on branch: String) throws -> Future<TravisCI.Requests.Response> {
         let uri = self.config.repoUrl + "/requests"
         var config = script.config
         config["script"] = script.content
@@ -124,12 +130,12 @@ public class TravisCI {
             request.http.body = HTTPBody(data: try body.makeJSON())
         }
 
-        return futureResponse.map { response in
-            return response.http.status.isSuccessfulRequest
+        return futureResponse.flatMap { response in
+            return try self.container.client().decode(response: response, using: .travis)
         }
     }
 
-    public func execute(title: String, buildParameters: BuildParams) throws -> Future<Bool> {
+    public func execute(title: String, buildParameters: BuildParams) throws -> Future<TravisCI.Requests.Response> {
         let uri = self.config.repoUrl + "/requests"
 
         let body = [
@@ -144,8 +150,77 @@ public class TravisCI {
             request.http.body = HTTPBody(data: try body.makeJSON())
         }
 
-        return futureResponse.map { response in
-            return response.http.status.isSuccessfulRequest
+        return futureResponse.flatMap { response in
+            return try self.container.client().decode(response: response, using: .travis)
         }
+    }
+
+    /// GET /requests
+    public func requests() throws -> Future<TravisCI.Requests> {
+        return try get(uri(at: "/requests"))
+    }
+
+    /// GET /request/{requestId}
+    public func request(id: Request.ID) throws -> Future<TravisCI.Request> {
+        return try get(uri(at: "/request/\(id)"))
+    }
+
+    public enum Poll<PollResult> {
+        case `continue`
+        case stop(PollResult)
+    }
+
+    /// Polls the /request/{requestId} endpoint until the the `until` returns `.stop`
+    ///
+    /// ```
+    ///     try self.travis.poll(requestId: 123) { request -> TravisCI.Poll<String> in
+    ///         switch request.state {
+    ///         case .pending:
+    ///            return .continue
+    ///         case .complete(let completedRequest):
+    ///             return .stop(completedRequest.commit.message)
+    ///         }
+    ///     }.map { result in
+    ///         print("Travis request commit is \(result)")
+    ///     }
+    /// ```
+    ///
+    /// - Parameter id: The id of the Travis request
+    /// - Parameter until: Closure called on each poll call. Return `.continue` if a next poll should be set or `.stop` with an associated generic value of the polling should stop
+
+    public func poll<PollResult>(requestId: Request.ID, until: @escaping (TravisCI.Request) -> Poll<PollResult>) throws -> Future<PollResult> {
+        let promise = container.eventLoop.newPromise(PollResult.self)
+        try doPoll(requestId: requestId, until: until, promise: promise)
+        return promise.futureResult
+    }
+
+    private func doPoll<PollResult>(requestId id: Request.ID, until: @escaping (TravisCI.Request) -> Poll<PollResult>, promise: Promise<PollResult>) throws {
+        _ = try request(id: id).map { request in
+            let poll = until(request)
+            switch poll {
+            case .continue:
+                self.container.eventLoop.scheduleTask(in: TimeAmount.seconds(TimeAmount.Value(1))) {
+                    try self.doPoll(requestId: id, until: until, promise: promise)
+                }
+            case .stop(let result):
+                promise.succeed(result: result)
+            }
+        }.catch { error in
+            promise.fail(error: error)
+        }
+    }
+
+    public func buildURL(from build: TravisCI.Build) -> URL {
+        let url = URL(string: config.dashboardUrl + "/builds/\(build.id)")!
+        return url
+    }
+    // MARK: - Private
+
+    private func uri(at path: String) -> String {
+        return self.config.repoUrl + path
+    }
+
+    private func get<T: Decodable>(_ uri: String) throws -> Future<T> {
+        return try container.client().get(uri, using: .travis, headers: headers)
     }
 }

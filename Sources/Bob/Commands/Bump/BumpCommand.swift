@@ -22,7 +22,7 @@ import Vapor
 
 // Command used to bump up build numbers directly on GitHub
 public class BumpCommand {
-    struct Constants {
+    enum Constants {
         static let branchSpecifier: String = "-b"
     }
     

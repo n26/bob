@@ -71,7 +71,7 @@ extension GitHub {
     }
 
     /// https://developer.github.com/v3/git/
-    public struct Git {
+    public enum Git {
         public struct Commit: Content {
             public typealias SHA = String
 
@@ -155,7 +155,7 @@ extension GitHub {
     }
 
     /// https://developer.github.com/v3/repos/
-    public struct Repos {
+    public enum Repos {
         /// Struct representing a Branch.
         /// Only contains name since it is the only
         /// property used by current functionality

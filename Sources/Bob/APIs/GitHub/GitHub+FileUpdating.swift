@@ -121,7 +121,6 @@ public extension GitHub {
 
         // wait for both repo state and updated items to create a new tree
         let newTree = flatMap(to: Tree.self, respositoryState, updatedItems) { respositoryState, updatedItems in
-
             if updatedItems.isEmpty {
                 throw "The updater \(updater) did not match any items to update"
             }

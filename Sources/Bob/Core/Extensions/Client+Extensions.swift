@@ -25,13 +25,15 @@ extension Response {
 }
 
 public extension Client {
-
-    func get<T: Content>(_ uri: String, using decoder: JSONDecoder = JSONDecoder(), authorization: BasicAuthorization? = nil) throws -> Future<T> {
-        let request = HTTPRequest(method: .GET, url: uri)
+    func get<T: Decodable>(_ uri: String, using decoder: JSONDecoder = JSONDecoder(), authorization: BasicAuthorization? = nil, headers: HTTPHeaders? = nil) throws -> Future<T> {
+        var request = HTTPRequest(method: .GET, url: uri)
+        if let headers = headers {
+            request.headers = headers
+        }
         return try perform(request, using: decoder, authorization: authorization)
     }
 
-    func post<Body: Content, T: Content>(body: Body, to uri: String, encoder: JSONEncoder = JSONEncoder(), using decoder: JSONDecoder = JSONDecoder(), method: HTTPMethod = .POST, authorization: BasicAuthorization? = nil) throws -> Future<T> {
+    func post<Body: Content, T: Decodable>(body: Body, to uri: String, encoder: JSONEncoder = JSONEncoder(), using decoder: JSONDecoder = JSONDecoder(), method: HTTPMethod = .POST, authorization: BasicAuthorization? = nil) throws -> Future<T> {
         var request = HTTPRequest(method: method, url: uri)
         let data = try encoder.encode(body)
         request.body = HTTPBody(data: data)
@@ -39,31 +41,33 @@ public extension Client {
         return try perform(request, using: decoder, authorization: authorization)
     }
 
-    func perform<T: Content>(_ request: HTTPRequest, using decoder: JSONDecoder = JSONDecoder(), authorization: BasicAuthorization? = nil) throws -> Future<T> {
+    func perform<T: Decodable>(_ request: HTTPRequest, using decoder: JSONDecoder = JSONDecoder(), authorization: BasicAuthorization? = nil) throws -> Future<T> {
         let req = Request(http: request, using: container)
 
-        req.http.headers.basicAuthorization = authorization
+        if let authorization = authorization {
+            req.http.headers.basicAuthorization = authorization
+        }
 
         let futureResult = send(req)
         let featureContent = futureResult.flatMap { response -> EventLoopFuture<T> in
-            guard response.http.status.isSuccessfulRequest else {
-                var responseBody: String?
-                if let data = response.http.body.data {
-                    responseBody = String(data: data, encoding: .utf8)
-                }
-                throw GitHubError.invalidStatus(httpStatus: response.http.status.code, body: responseBody)
-            }
-
-            if T.self is Response.Empty.Type {
-                return self.container.future(Response.Empty() as! T)
-            }
-            let futureDecode = try response.content.decode(json: T.self, using: decoder)
-            futureDecode.whenFailure { error in
-                print("\(request.method.string) \(request.url): \(error)")
-            }
-            return futureDecode
+            return try self.decode(response: response, using: decoder)
         }
 
         return featureContent
+    }
+
+    func decode<T: Decodable>(response: Response, using decoder: JSONDecoder) throws -> Future<T> {
+        guard response.http.status.isSuccessfulRequest else {
+            var responseBody: String?
+            if let data = response.http.body.data {
+                responseBody = String(data: data, encoding: .utf8)
+            }
+            throw GitHubError.invalidStatus(httpStatus: response.http.status.code, body: responseBody)
+        }
+
+        if T.self is Response.Empty.Type {
+            return self.container.future(Response.Empty() as! T)
+        }
+        return try response.content.decode(json: T.self, using: decoder)
     }
 }
