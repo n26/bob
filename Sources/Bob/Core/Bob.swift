@@ -21,7 +21,7 @@ import Foundation
 import Vapor
 
 public class Bob {
-    static let version: String = "2.2.0"
+    static let version: String = "2.2.1"
     
     /// Struct containing all properties needed for Bob to function
     public struct Configuration {

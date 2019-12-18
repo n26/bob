@@ -64,6 +64,9 @@ class SlackClient {
             let text: String
             let channel: String
             let user: String
+
+            /// All messages with subtype are not user message (e.g. bot_message) and we want to ignore those
+            let subtype: String?
         }
 
         case message(Message)
@@ -137,17 +140,21 @@ class SlackClient {
         do {
             guard let event = try self.event(fromText: text) else { return }
             switch event {
-            case .message(let message):
-                guard message.user != me.id else {
-                    logger.warning("Ignoring message from another instance of myself: '\(message.text)'")
+            case .message(let message) where message.user != me.id:
+                if let subtype = message.subtype {
+                    logger.debug("Ignoring message subtype '\(subtype)'")
                     return
                 }
                 logger.debug("Received message: '\(message.text)'")
                 let sender = SlackMessageSender(socket: ws, channel: message.channel)
                 onMessage?(message.text, sender)
+            case .message(let message) where message.user == me.id:
+                logger.warning("Ignoring message from another instance of myself: '\(message.text)'")
             case .goodbye:
                 logger.info("Received goodbye event. Closing connection")
                 ws.close()
+            default:
+                logger.warning("Unhandled slack event \(event)")
             }
         } catch {
             logger.info("Could not parse Slack event: \(error)")
