@@ -84,7 +84,7 @@ public class TravisCI {
             self.token = token
         }
     }
-    
+
     private let config: Configuration
     private let container: Container
 
@@ -108,7 +108,7 @@ public class TravisCI {
         self.config = config
         self.container = container
     }
-    
+
     /// Triggers a TravisCI job executing a script named `script`
     ///
     /// - Parameters:
@@ -188,19 +188,30 @@ public class TravisCI {
     /// - Parameter id: The id of the Travis request
     /// - Parameter until: Closure called on each poll call. Return `.continue` if a next poll should be set or `.stop` with an associated generic value of the polling should stop
 
-    public func poll<PollResult>(requestId: Request.ID, until: @escaping (TravisCI.Request) -> Poll<PollResult>) throws -> Future<PollResult> {
+    public func poll<PollResult>(requestId: Request.ID, timeout: TimeInterval = 60, until: @escaping (TravisCI.Request) -> Poll<PollResult>) throws -> Future<PollResult> {
         let promise = container.eventLoop.newPromise(PollResult.self)
-        try doPoll(requestId: requestId, until: until, promise: promise)
+        try doPoll(requestId: requestId, timeout: timeout, until: until, promise: promise)
         return promise.futureResult
     }
 
-    private func doPoll<PollResult>(requestId id: Request.ID, until: @escaping (TravisCI.Request) -> Poll<PollResult>, promise: Promise<PollResult>) throws {
+    private func doPoll<PollResult>(requestId id: Request.ID,
+                                    initialStartDate: Date = Date(),
+                                    timeout: TimeInterval,
+                                    until: @escaping (TravisCI.Request) -> Poll<PollResult>, promise: Promise<PollResult>) throws {
+        let logger = try container.make(Logger.self)
+        logger.debug("Polling for travis request \(id)")
+
+        if Date() > initialStartDate.addingTimeInterval(timeout) {
+            promise.fail(error: "Polling for request id \(id) timed out after \(timeout)s")
+            return
+        }
+
         _ = try request(id: id).map { request in
             let poll = until(request)
             switch poll {
             case .continue:
                 self.container.eventLoop.scheduleTask(in: TimeAmount.seconds(TimeAmount.Value(1))) {
-                    try self.doPoll(requestId: id, until: until, promise: promise)
+                    try self.doPoll(requestId: id, initialStartDate: initialStartDate, timeout: timeout,  until: until, promise: promise)
                 }
             case .stop(let result):
                 promise.succeed(result: result)
